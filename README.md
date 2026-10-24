@@ -208,12 +208,6 @@ action:
 | Life detection (TensorFlow model) | ❌ out of scope (ships `DnIRB_v2_2_thermal_sigma25_depth5.pb`, no portable equivalent) |
 | Product calibration | ❌ factory tool, not ported |
 
-## Verified against
-
-* Camera `192.168.11.153:3333` (SenXor firmware answer: `#0008WREG01FD` to a
-  stream-start write), host `192.168.11.11`
-* `SenXorEvkViewer 2024.06.06.0`, file version `2024.06.06.0`, 23 278 592 bytes
-
 ## Troubleshooting
 
 * **Only one TCP client at a time.** The firmware accepts a single connection;
