@@ -1,5 +1,17 @@
 ﻿# Changelog
 
+## 1.1.0
+
+* Frame rate control corrected: the firmware uses an absolute level register
+  (`0xB400 + level`, 1 = fastest) instead of relative up/down commands, matching
+  the packets captured from the vendor viewer (`#000CWREGB40102DF` to speed up,
+  `#000CWREGB40202E0` to slow down).
+* New `select.frame_rate_level` entity (levels 1-4) plus level-aware
+  *increase / decrease frame rate* buttons.
+* The selected level is stored in the config entry and re-applied after a
+  reconnect.
+* Camera attributes now expose `frame_rate_level` alongside the measured rate.
+
 ## 1.0.1
 
 * Detect a camera that accepts the TCP connection but never streams (another

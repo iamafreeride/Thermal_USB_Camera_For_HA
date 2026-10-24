@@ -18,6 +18,7 @@ from .const import (
     CONF_AUTO_RANGE,
     CONF_EMISSIVITY,
     CONF_FILTER,
+    CONF_FPS_LEVEL,
     CONF_GAIN,
     CONF_JPEG_QUALITY,
     CONF_OFFSET,
@@ -30,6 +31,7 @@ from .const import (
     CONF_UNIT,
     DEFAULT_EMISSIVITY,
     DEFAULT_FILTER,
+    DEFAULT_FPS_LEVEL,
     DEFAULT_GAIN,
     DEFAULT_JPEG_QUALITY,
     DEFAULT_OFFSET,
@@ -40,11 +42,14 @@ from .const import (
 )
 from .palette import DEFAULT_PALETTE
 from .protocol import (
+    FPS_LEVEL_MAX,
+    FPS_LEVEL_MIN,
     FRAME_HEIGHT,
     FRAME_WIDTH,
     SenXorConnection,
     SenXorProtocolError,
     ThermalFrame,
+    step_fps_level,
 )
 from .rendering import (
     FrameStats,
@@ -81,6 +86,7 @@ class SenXorSettings:
     show_markers: bool = True
     show_colorbar: bool = True
     jpeg_quality: int = DEFAULT_JPEG_QUALITY
+    fps_level: int = DEFAULT_FPS_LEVEL
 
     @classmethod
     def from_options(cls, options: dict[str, Any]) -> "SenXorSettings":
@@ -98,6 +104,7 @@ class SenXorSettings:
             show_markers=bool(options.get(CONF_SHOW_MARKERS, True)),
             show_colorbar=bool(options.get(CONF_SHOW_COLORBAR, True)),
             jpeg_quality=int(options.get(CONF_JPEG_QUALITY, DEFAULT_JPEG_QUALITY)),
+            fps_level=int(options.get(CONF_FPS_LEVEL, DEFAULT_FPS_LEVEL)),
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -115,6 +122,7 @@ class SenXorSettings:
             CONF_SHOW_MARKERS: self.show_markers,
             CONF_SHOW_COLORBAR: self.show_colorbar,
             CONF_JPEG_QUALITY: self.jpeg_quality,
+            CONF_FPS_LEVEL: self.fps_level,
         }
 
     def render_options(self) -> RenderOptions:
@@ -209,6 +217,7 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
 
                 timeout = wait_for_frame if attempt == 0 else max(4.0, wait_for_frame / 2)
                 if await self._wait_for_first_frame(timeout):
+                    await self._apply_fps_level()
                     return
 
                 if self._connection.bytes_received == 0:
@@ -231,12 +240,20 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
                     _LOGGER.debug("Could not nudge the camera: %r", err)
 
                 if await self._wait_for_first_frame(4.0):
+                    await self._apply_fps_level()
                     return
 
                 await self._connection.close()
                 await asyncio.sleep(0.5)
 
             raise SenXorProtocolError(problem)
+
+    async def _apply_fps_level(self) -> None:
+        """Re-apply the stored frame rate level after (re)connecting."""
+        try:
+            await self._connection.set_fps_level(self.settings.fps_level)
+        except Exception as err:  # noqa: BLE001 - not fatal
+            _LOGGER.debug("Could not restore frame rate level: %r", err)
 
     async def _wait_for_first_frame(self, timeout: float) -> bool:
         """Wait up to ``timeout`` seconds for the reader to deliver a frame."""
@@ -270,11 +287,24 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         await self._connection.single_frame()
         await self.async_request_refresh()
 
+    async def async_set_fps_level(self, level: int) -> None:
+        """Select the absolute frame rate level (1 fastest .. 4 slowest)."""
+        selected = max(FPS_LEVEL_MIN, min(FPS_LEVEL_MAX, int(level)))
+        if self._connection.connected:
+            try:
+                await self._connection.set_fps_level(selected)
+                self._last_problem = None
+            except Exception as err:  # noqa: BLE001 - keep the UI responsive
+                _LOGGER.warning("Could not set frame rate level %s: %r", selected, err)
+        await self.async_update_settings(fps_level=selected)
+
     async def async_frame_rate_up(self) -> None:
-        await self._connection.frame_rate_up()
+        """One step faster (towards level 1)."""
+        await self.async_set_fps_level(step_fps_level(self.settings.fps_level, -1))
 
     async def async_frame_rate_down(self) -> None:
-        await self._connection.frame_rate_down()
+        """One step slower (towards level 4)."""
+        await self.async_set_fps_level(step_fps_level(self.settings.fps_level, 1))
 
     # -- settings ----------------------------------------------------------
     async def async_update_settings(self, **changes: Any) -> None:

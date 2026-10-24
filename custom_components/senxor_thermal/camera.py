@@ -101,4 +101,5 @@ class SenXorThermalCamera(CoordinatorEntity[SenXorCoordinator], Camera):
         attributes["temperature_unit"] = unit
         attributes["palette"] = self.coordinator.settings.palette
         attributes["streaming"] = self.coordinator.streaming
+        attributes["frame_rate_level"] = self.coordinator.settings.fps_level
         return attributes

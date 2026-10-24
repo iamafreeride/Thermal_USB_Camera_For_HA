@@ -12,6 +12,8 @@ CAPTURED_COMMANDS = {
     "B103": b"#000CWREGB10302DE",
     "B100": b"#000CWREGB10002DB",
     "B101": b"#000CWREGB10102DC",
+    "B401": b"#000CWREGB40102DF",  # frame rate level 1 (faster), captured by the user
+    "B402": b"#000CWREGB40202E0",  # frame rate level 2 (slower)
     "B404": b"#000CWREGB40402E2",
     "B403": b"#000CWREGB40302E1",
 }
@@ -32,6 +34,31 @@ class BuildCommandTest(unittest.TestCase):
     def test_command_names(self) -> None:
         self.assertEqual(protocol.command_name(0xB103), "stream start")
         self.assertEqual(protocol.command_name(0x1234), "register 0x1234")
+
+
+class FrameRateLevelTest(unittest.TestCase):
+    def test_levels_map_to_registers(self) -> None:
+        self.assertEqual(protocol.fps_register(1), 0xB401)
+        self.assertEqual(protocol.fps_register(2), 0xB402)
+        self.assertEqual(protocol.fps_register(3), 0xB403)
+        self.assertEqual(protocol.fps_register(4), 0xB404)
+
+    def test_levels_are_clamped(self) -> None:
+        self.assertEqual(protocol.fps_register(0), 0xB401)
+        self.assertEqual(protocol.fps_register(9), 0xB404)
+
+    def test_stepping(self) -> None:
+        self.assertEqual(protocol.step_fps_level(3, -1), 2)  # faster
+        self.assertEqual(protocol.step_fps_level(3, 1), 4)   # slower
+        self.assertEqual(protocol.step_fps_level(1, -1), 1)  # clamped at fastest
+        self.assertEqual(protocol.step_fps_level(4, 1), 4)   # clamped at slowest
+
+    def test_level_commands_match_captured_packets(self) -> None:
+        self.assertEqual(protocol.build_wreg(protocol.fps_register(1)), b"#000CWREGB40102DF")
+        self.assertEqual(protocol.build_wreg(protocol.fps_register(2)), b"#000CWREGB40202E0")
+
+    def test_command_names(self) -> None:
+        self.assertEqual(protocol.command_name(0xB401), "frame rate level 1 (fastest)")
 
 
 class MessageParsingTest(unittest.TestCase):

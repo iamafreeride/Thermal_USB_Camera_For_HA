@@ -30,6 +30,7 @@ CONF_SCALE_MAX: Final = "scale_max"
 CONF_SHOW_MARKERS: Final = "show_markers"
 CONF_SHOW_COLORBAR: Final = "show_colorbar"
 CONF_JPEG_QUALITY: Final = "jpeg_quality"
+CONF_FPS_LEVEL: Final = "fps_level"
 
 DEFAULT_EMISSIVITY: Final = 0.97
 DEFAULT_OFFSET: Final = 1.5
@@ -39,6 +40,7 @@ DEFAULT_GAIN: Final = "1"
 DEFAULT_SCALE_MIN: Final = 20.0
 DEFAULT_SCALE_MAX: Final = 40.0
 DEFAULT_JPEG_QUALITY: Final = 85
+DEFAULT_FPS_LEVEL: Final = 1
 
 TEMPERATURE_UNITS: Final = ["°C", "°F", "K", "dK"]
 FILTER_MODES: Final = ["None", "Low", "High"]

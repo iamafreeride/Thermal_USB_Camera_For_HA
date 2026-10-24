@@ -72,14 +72,27 @@ Options (⚙ on the integration card): update interval (seconds) and JPEG qualit
 | `select.thermal_camera_palette` | 12 options | `INFERNO`, `HEATED_IRON`, `BLACK_BODY`, `PLASMA`, `COOLWARM`, `IRON_GLOW`, `GRAYSCALE`, `BONE`, `BEZIER`, `OCEAN`, `RAINBOW`, `SUMMER` |
 | `select.thermal_camera_image_temperature_unit` | `°C` `°F` `K` `dK` | Unit used for the values drawn on the image |
 | `select.thermal_camera_filtering` | `None` `Low` `High` | 3×3 / 5×5 spatial smoothing |
+| `select.thermal_camera_frame_rate_level` | `1`–`4` | Absolute frame rate level, `1` = fastest |
 | `switch.thermal_camera_automatic_temperature_range` | on | Auto colour scale |
 | `switch.thermal_camera_remove_extreme_values` | off | Trim 0.1 % of the extremes before scaling |
 | `switch.thermal_camera_show_min_max_markers` | on | Draw hot/cold markers |
 | `switch.thermal_camera_show_colour_bar` | on | Draw the colour bar |
 | `button.thermal_camera_single_frame` | – | Trigger one frame (`WREG 0xB101`) |
 | `button.thermal_camera_restart_stream` | – | Reconnect and restart streaming (`WREG 0xB103`) |
-| `button.thermal_camera_increase_frame_rate` | – | `WREG 0xB403` |
-| `button.thermal_camera_decrease_frame_rate` | – | `WREG 0xB404` |
+| `button.thermal_camera_increase_frame_rate` | – | One level faster (`0xB400 + level`) |
+| `button.thermal_camera_decrease_frame_rate` | – | One level slower (`0xB400 + level`) |
+
+### Frame rate levels
+
+The firmware does **not** implement relative "faster/slower" commands: the frame
+rate is an absolute level written to `0xB400 + level`, and the viewer always
+writes the *target* level (`0xB401` ... `0xB404`). Measured on the test device:
+level 1 ~ 15.8 fps, level 3 ~ 6.5 fps, level 4 ~ 4.3 fps.
+
+The select exposes the level directly; the two buttons step it (increase = one
+level faster, decrease = one level slower) and the chosen level is stored in the
+config entry and re-applied after a reconnect. Because level 1 is the fastest the
+camera can do, *increase* has no visible effect when the level is already 1.
 
 Sensors always report **°C**; Home Assistant converts them to your unit system.
 The *image temperature unit* only affects the numbers drawn on the thermogram,
@@ -140,7 +153,7 @@ action:
 | USB connection | ❌ (same protocol over a serial port; not ported, HA hosts are usually remote) |
 | Connect / Disconnect | ✅ integration setup + *Restart stream* button |
 | Single frame / continuous stream | ✅ buttons + always-on stream |
-| FPS up / down | ✅ buttons (`0xB403` / `0xB404`) |
+| FPS up / down | ✅ buttons + level select (`0xB401`-`0xB404`, level 1 = fastest) |
 | 12 colour palettes | ✅ select (tables recreated, not byte-identical) |
 | Auto / manual temperature range, remove extremes | ✅ switches + numbers |
 | Filtering none / low / high | ✅ select |

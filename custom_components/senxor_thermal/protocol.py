@@ -67,16 +67,41 @@ class SenXorProtocolError(Exception):
 REG_STREAM_START: Final = 0xB103
 REG_STREAM_STOP: Final = 0xB100
 REG_SINGLE_FRAME: Final = 0xB101
-REG_FPS_UP: Final = 0xB403
-REG_FPS_DOWN: Final = 0xB404
+
+# Frame rate is selected with an *absolute level* register, not with relative
+# "faster/slower" commands: 0xB400 + level.  Level 1 is the fastest stream.
+# Captured from the viewer: decrease -> B402, increase -> B401 (level 1..2),
+# and B403 / B404 (level 3 / 4) in a later session; measured ~6.5 fps for
+# level 3 and ~4.3 fps for level 4, ~15.8 fps at level 1.
+REG_FPS_BASE: Final = 0xB400
+FPS_LEVEL_MIN: Final = 1
+FPS_LEVEL_MAX: Final = 4
+FPS_LEVELS: Final = tuple(range(FPS_LEVEL_MIN, FPS_LEVEL_MAX + 1))
+
+# Kept for backwards compatibility with older entity descriptions.
+REG_FPS_UP: Final = REG_FPS_BASE + 1
+REG_FPS_DOWN: Final = REG_FPS_BASE + 2
 
 _COMMAND_NAMES: Final = {
     REG_STREAM_START: "stream start",
     REG_STREAM_STOP: "stream stop",
     REG_SINGLE_FRAME: "single frame",
-    REG_FPS_UP: "frame rate up",
-    REG_FPS_DOWN: "frame rate down",
+    0xB401: "frame rate level 1 (fastest)",
+    0xB402: "frame rate level 2",
+    0xB403: "frame rate level 3",
+    0xB404: "frame rate level 4 (slowest)",
 }
+
+
+def fps_register(level: int) -> int:
+    """Return the command register for a frame rate ``level`` (1 = fastest)."""
+    return REG_FPS_BASE + max(FPS_LEVEL_MIN, min(FPS_LEVEL_MAX, level))
+
+
+def step_fps_level(level: int, delta: int) -> int:
+    """Move ``level`` by ``delta`` frames of speed, clamped to the valid range."""
+    return max(FPS_LEVEL_MIN, min(FPS_LEVEL_MAX, level + delta))
+
 
 
 def build_wreg(register: int) -> bytes:
@@ -251,6 +276,12 @@ class SenXorConnection:
 
     async def single_frame(self) -> None:
         await self.send_command(REG_SINGLE_FRAME)
+
+    async def set_fps_level(self, level: int) -> int:
+        """Select an absolute frame rate level (1 fastest .. 4 slowest)."""
+        selected = max(FPS_LEVEL_MIN, min(FPS_LEVEL_MAX, level))
+        await self.send_command(fps_register(selected))
+        return selected
 
     async def frame_rate_up(self) -> None:
         await self.send_command(REG_FPS_UP)

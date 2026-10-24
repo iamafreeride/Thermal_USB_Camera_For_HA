@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Callable
+from typing import Any, Callable
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import FILTER_MODES, TEMPERATURE_UNITS
+from .protocol import FPS_LEVELS
 from .coordinator import SenXorCoordinator
 from .entity import SenXorEntity
 from .palette import PALETTE_NAMES
@@ -29,6 +30,7 @@ class SenXorSelectDescription:
     getter: Callable[[SenXorCoordinator], str]
     setting: str
     icon: str
+    convert: Callable[[str], Any] | None = None
 
 
 SELECTS: tuple[SenXorSelectDescription, ...] = (
@@ -55,6 +57,15 @@ SELECTS: tuple[SenXorSelectDescription, ...] = (
         getter=lambda coord: coord.settings.filtering,
         setting="filtering",
         icon="mdi:blur",
+    ),
+    SenXorSelectDescription(
+        key="frame_rate_level",
+        name="Frame rate level",
+        options=[str(level) for level in FPS_LEVELS],
+        getter=lambda coord: str(coord.settings.fps_level),
+        setting="fps_level",
+        icon="mdi:speedometer",
+        convert=int,
     ),
 )
 
@@ -92,6 +103,9 @@ class SenXorSelect(SenXorEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Apply the selected option."""
-        await self.coordinator.async_update_settings(
-            **{self.entity_description.setting: option}
-        )
+        description = self.entity_description
+        if description.key == "frame_rate_level":
+            await self.coordinator.async_set_fps_level(int(option))
+            return
+        value = description.convert(option) if description.convert else option
+        await self.coordinator.async_update_settings(**{description.setting: value})

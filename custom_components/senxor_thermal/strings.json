@@ -31,37 +31,92 @@
   },
   "entity": {
     "sensor": {
-      "minimum_temperature": {"name": "Minimum temperature"},
-      "maximum_temperature": {"name": "Maximum temperature"},
-      "average_temperature": {"name": "Average temperature"},
-      "center_temperature": {"name": "Centre temperature"},
-      "frame_rate": {"name": "Frame rate"},
-      "frames_received": {"name": "Frames received"},
-      "hotspot_x": {"name": "Hotspot X"},
-      "hotspot_y": {"name": "Hotspot Y"}
+      "minimum_temperature": {
+        "name": "Minimum temperature"
+      },
+      "maximum_temperature": {
+        "name": "Maximum temperature"
+      },
+      "average_temperature": {
+        "name": "Average temperature"
+      },
+      "center_temperature": {
+        "name": "Centre temperature"
+      },
+      "frame_rate": {
+        "name": "Frame rate"
+      },
+      "frames_received": {
+        "name": "Frames received"
+      },
+      "hotspot_x": {
+        "name": "Hotspot X"
+      },
+      "hotspot_y": {
+        "name": "Hotspot Y"
+      }
     },
     "number": {
-      "emissivity": {"name": "Emissivity"},
-      "temperature_offset": {"name": "Temperature offset"},
-      "scale_minimum": {"name": "Scale minimum"},
-      "scale_maximum": {"name": "Scale maximum"}
+      "emissivity": {
+        "name": "Emissivity"
+      },
+      "temperature_offset": {
+        "name": "Temperature offset"
+      },
+      "scale_minimum": {
+        "name": "Scale minimum"
+      },
+      "scale_maximum": {
+        "name": "Scale maximum"
+      }
     },
     "select": {
-      "palette": {"name": "Colour palette"},
-      "temperature_unit": {"name": "Image temperature unit"},
-      "filtering": {"name": "Filtering"}
+      "palette": {
+        "name": "Colour palette"
+      },
+      "temperature_unit": {
+        "name": "Image temperature unit"
+      },
+      "filtering": {
+        "name": "Filtering"
+      },
+      "frame_rate_level": {
+        "name": "Frame rate level",
+        "state": {
+          "1": "1 - fastest",
+          "2": "2 - fast",
+          "3": "3 - slow",
+          "4": "4 - slowest"
+        }
+      }
     },
     "switch": {
-      "auto_range": {"name": "Automatic temperature range"},
-      "remove_extreme": {"name": "Remove extreme values"},
-      "show_markers": {"name": "Show min/max markers"},
-      "show_colorbar": {"name": "Show colour bar"}
+      "auto_range": {
+        "name": "Automatic temperature range"
+      },
+      "remove_extreme": {
+        "name": "Remove extreme values"
+      },
+      "show_markers": {
+        "name": "Show min/max markers"
+      },
+      "show_colorbar": {
+        "name": "Show colour bar"
+      }
     },
     "button": {
-      "single_frame": {"name": "Single frame"},
-      "restart_stream": {"name": "Restart stream"},
-      "frame_rate_up": {"name": "Increase frame rate"},
-      "frame_rate_down": {"name": "Decrease frame rate"}
+      "single_frame": {
+        "name": "Single frame"
+      },
+      "restart_stream": {
+        "name": "Restart stream"
+      },
+      "frame_rate_up": {
+        "name": "Increase frame rate"
+      },
+      "frame_rate_down": {
+        "name": "Decrease frame rate"
+      }
     }
   },
   "services": {

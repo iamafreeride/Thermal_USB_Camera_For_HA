@@ -106,8 +106,25 @@ is the top of the image).
 | `0xB103` | start continuous stream | connect, *Stream* |
 | `0xB100` | stop continuous stream | *Stop* |
 | `0xB101` | one single frame | *Single Frame* |
-| `0xB403` | frame rate up | *FPS ↑* |
-| `0xB404` | frame rate down | *FPS ↓* |
+| `0xB401` | frame rate level 1 (fastest, ~15.8 fps) | *FPS ↑* |
+| `0xB402` | frame rate level 2 | *FPS ↓* |
+| `0xB403` | frame rate level 3 (~6.5 fps) | *FPS ↑* |
+| `0xB404` | frame rate level 4 (slowest, ~4.3 fps) | *FPS ↓* |
+
+The frame rate control is **absolute, not relative**: the viewer writes
+`0xB400 + level` for the level it wants. Two captures of the same buttons
+produced different registers:
+
+```
+#000CWREGB40102DF   "increase" from level 2 -> 1   (user capture)
+#000CWREGB40202E0   "decrease" from level 1 -> 2   (user capture)
+#000CWREGB40302E1   "increase" from level 4 -> 3   (earlier capture)
+#000CWREGB40402E2   "decrease" from level 3 -> 4   (earlier capture)
+```
+
+Writing the same register twice has no effect, which explains the
+"saturated" behaviour seen while measuring (repeated `0xB403` stayed at
+~6.5 fps). Level 1 is the default state and the fastest stream.
 
 Sequence produced by the viewer, captured byte for byte with a local TCP relay:
 
@@ -116,8 +133,8 @@ connect      -> #000CWREGB10302DE
 "Stop"       -> #000CWREGB10002DB
 "Single"     -> #000CWREGB10102DC
 "Stream"     -> #000CWREGB10302DE
-"FPS down"   -> #000CWREGB40402E2
-"FPS up"     -> #000CWREGB40302E1
+"FPS down"   -> #000CWREGB40402E2   (level 3 -> 4)
+"FPS up"     -> #000CWREGB40302E1   (level 4 -> 3)
 ```
 
 An additional family of registers (`0x2000`, `0x2003`, `0x2500`, `0x2501`,
