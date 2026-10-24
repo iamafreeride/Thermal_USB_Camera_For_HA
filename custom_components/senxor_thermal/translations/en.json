@@ -44,10 +44,10 @@
         "name": "Centre temperature"
       },
       "probe_1_temperature": {
-        "name": "Probe 1 temperature"
+        "name": "Temperature 1"
       },
       "probe_2_temperature": {
-        "name": "Probe 2 temperature"
+        "name": "Temperature 2"
       },
       "hotspot_x": {
         "name": "Hot spot X"
@@ -88,16 +88,16 @@
         "name": "Scale maximum"
       },
       "probe_1_x": {
-        "name": "Probe 1 X"
+        "name": "X1"
       },
       "probe_1_y": {
-        "name": "Probe 1 Y"
+        "name": "Y1"
       },
       "probe_2_x": {
-        "name": "Probe 2 X"
+        "name": "X2"
       },
       "probe_2_y": {
-        "name": "Probe 2 Y"
+        "name": "Y2"
       }
     },
     "select": {
@@ -142,10 +142,15 @@
         "name": "Disconnect"
       },
       "increase_frame_rate": {
-        "name": "Increase frame rate"
+        "name": "FPS increase"
       },
       "decrease_frame_rate": {
-        "name": "Decrease frame rate"
+        "name": "FPS decrease"
+      }
+    },
+    "camera": {
+      "thermal_image": {
+        "name": "Thermal image"
       }
     }
   },

@@ -40,7 +40,7 @@ class SenXorSelectDescription:
 SELECTS: tuple[SenXorSelectDescription, ...] = (
     SenXorSelectDescription(
         key="palette",
-        name="Colour palette",
+        name="調色盤",
         options=PALETTE_NAMES,
         getter=lambda coord: coord.settings.palette,
         setter=lambda coord, value: _set_option(coord, palette=value),
@@ -48,7 +48,7 @@ SELECTS: tuple[SenXorSelectDescription, ...] = (
     ),
     SenXorSelectDescription(
         key="temperature_unit",
-        name="Image temperature unit",
+        name="影像溫度單位",
         options=TEMPERATURE_UNITS,
         getter=lambda coord: coord.settings.unit,
         setter=lambda coord, value: _set_option(coord, unit=value),
@@ -56,7 +56,7 @@ SELECTS: tuple[SenXorSelectDescription, ...] = (
     ),
     SenXorSelectDescription(
         key="filtering",
-        name="Filtering",
+        name="濾波",
         options=FILTER_MODES,
         getter=lambda coord: coord.settings.filtering,
         setter=lambda coord, value: _set_option(coord, filtering=value),
@@ -64,7 +64,7 @@ SELECTS: tuple[SenXorSelectDescription, ...] = (
     ),
     SenXorSelectDescription(
         key="gain",
-        name="Gain",
+        name="增益",
         options=GAIN_MODES,
         getter=lambda coord: coord.settings.gain,
         setter=lambda coord, value: coord.async_set_gain(value),
@@ -94,9 +94,10 @@ class SenXorSelect(SenXorEntity, SelectEntity):
         entry: ConfigEntry,
         description: SenXorSelectDescription,
     ) -> None:
-        super().__init__(coordinator, entry, description.key)
+        super().__init__(coordinator, entry, description.key, "select")
         self.entity_description = description
         self._attr_translation_key = description.key
+        self._attr_name = description.name
         self._attr_options = description.options
         self._attr_icon = description.icon
         self._attr_entity_category = description.entity_category

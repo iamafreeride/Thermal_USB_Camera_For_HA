@@ -1,0 +1,177 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SenXor 熱影像攝影機",
+        "description": "輸入 SenXor 熱影像模組或其 TCP 橋接器的位址，原廠韌體預設埠為 3333。",
+        "data": {
+          "host": "主機位址",
+          "port": "埠號",
+          "name": "名稱"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "無法連線或收不到熱影像，請確認位址，並關閉 SenXorEvkViewer。"
+    },
+    "abort": {
+      "already_configured": "此攝影機已設定。"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "SenXor 熱影像選項",
+        "data": {
+          "scan_interval": "更新間隔（秒）",
+          "jpeg_quality": "JPEG 品質"
+        }
+      }
+    }
+  },
+  "entity": {
+    "camera": {
+      "thermal_image": {
+        "name": "熱影像"
+      }
+    },
+    "sensor": {
+      "minimum_temperature": {
+        "name": "最低溫"
+      },
+      "maximum_temperature": {
+        "name": "最高溫"
+      },
+      "average_temperature": {
+        "name": "平均溫"
+      },
+      "center_temperature": {
+        "name": "中心溫"
+      },
+      "probe_1_temperature": {
+        "name": "溫度1"
+      },
+      "probe_2_temperature": {
+        "name": "溫度2"
+      },
+      "hotspot_x": {
+        "name": "熱點 X"
+      },
+      "hotspot_y": {
+        "name": "熱點 Y"
+      },
+      "die_temperature": {
+        "name": "晶片溫度"
+      },
+      "vdd": {
+        "name": "供應電壓"
+      },
+      "frame_rate": {
+        "name": "影格率"
+      }
+    },
+    "number": {
+      "emissivity": {
+        "name": "放射率"
+      },
+      "temperature_offset": {
+        "name": "溫度補償"
+      },
+      "sensitivity": {
+        "name": "靈敏度"
+      },
+      "frame_rate_divider": {
+        "name": "影格率除數"
+      },
+      "percentile": {
+        "name": "極值裁切"
+      },
+      "scale_minimum": {
+        "name": "色階下限"
+      },
+      "scale_maximum": {
+        "name": "色階上限"
+      },
+      "probe_1_x": {
+        "name": "X1"
+      },
+      "probe_1_y": {
+        "name": "Y1"
+      },
+      "probe_2_x": {
+        "name": "X2"
+      },
+      "probe_2_y": {
+        "name": "Y2"
+      }
+    },
+    "select": {
+      "palette": {
+        "name": "調色盤"
+      },
+      "temperature_unit": {
+        "name": "影像溫度單位"
+      },
+      "filtering": {
+        "name": "濾波"
+      },
+      "gain": {
+        "name": "增益"
+      }
+    },
+    "switch": {
+      "streaming": {
+        "name": "連續擷取"
+      },
+      "auto_range": {
+        "name": "自動色階"
+      },
+      "remove_extreme": {
+        "name": "移除極值"
+      },
+      "show_markers": {
+        "name": "顯示極值標記"
+      },
+      "show_colorbar": {
+        "name": "顯示色階條"
+      }
+    },
+    "button": {
+      "single_frame": {
+        "name": "單張擷取"
+      },
+      "reconnect": {
+        "name": "重新連線"
+      },
+      "disconnect": {
+        "name": "中斷連線"
+      },
+      "increase_frame_rate": {
+        "name": "FPS 增加"
+      },
+      "decrease_frame_rate": {
+        "name": "FPS 減少"
+      }
+    }
+  },
+  "services": {
+    "snapshot": {
+      "name": "快照",
+      "description": "將目前熱影像存成 JPEG（可另存 CSV）到 config/www/senxor_thermal。",
+      "fields": {
+        "entry_id": {
+          "name": "設定項目",
+          "description": "僅在設定多台攝影機時需要。"
+        },
+        "filename": {
+          "name": "檔名",
+          "description": "不含副檔名的檔名。"
+        },
+        "csv": {
+          "name": "一併輸出 CSV",
+          "description": "輸出校正後的像素矩陣。"
+        }
+      }
+    }
+  }
+}

@@ -56,46 +56,51 @@ Options (⚙ on the integration card): update interval (seconds) and JPEG qualit
 
 ## Entities
 
-| Entity | Type | Description |
-| --- | --- | --- |
-| `camera.thermal_camera` | camera | False colour thermogram, updated every coordinator tick |
-| `sensor.thermal_camera_minimum_temperature` | °C | Coldest pixel of the current frame |
-| `sensor.thermal_camera_maximum_temperature` | °C | Hottest pixel of the current frame |
-| `sensor.thermal_camera_average_temperature` | °C | Mean of all 4960 pixels |
-| `sensor.thermal_camera_centre_temperature` | °C | Pixel under the crosshair |
-| `sensor.thermal_camera_probe_1_temperature` | °C | Temperature at probe 1 |
-| `sensor.thermal_camera_probe_2_temperature` | °C | Temperature at probe 2 |
-| `sensor.thermal_camera_hotspot_x` / `_y` | px | Coordinates of the hottest pixel |
-| `sensor.thermal_camera_die_temperature` | °C | Sensor die temperature (GFRA header) |
-| `sensor.thermal_camera_vdd` | V | Sensor supply voltage (GFRA header) |
-| `sensor.thermal_camera_frame_rate` | fps | Measured frame rate |
-| `number.thermal_camera_emissivity` | 1–100 % | Written to register `0xCA` |
-| `number.thermal_camera_temperature_offset` | −12.8…12.7 °C | Written to register `0xCB` (0.1 K steps) |
-| `number.thermal_camera_sensitivity` | 0.01–2.55 | Written to register `0xC2` |
-| `number.thermal_camera_frame_rate_divider` | 0–127 | Written to register `0xB4` (`0` = maximum FPS) |
-| `number.thermal_camera_percentile` | 0–0.2 | Extreme clipping fraction when *remove extreme* is on |
-| `number.thermal_camera_scale_minimum` / `_maximum` | °C | Manual colour scale limits |
-| `number.thermal_camera_probe_1_x` / `_1_y` | 0–79 / 0–61 | Probe 1 pixel coordinates |
-| `number.thermal_camera_probe_2_x` / `_2_y` | 0–79 / 0–61 | Probe 2 pixel coordinates |
-| `select.thermal_camera_palette` | 12 options | `INFERNO`, `HEATED_IRON`, `BLACK_BODY`, `PLASMA`, `COOLWARM`, `IRON_GLOW`, `GRAYSCALE`, `BONE`, `BEZIER`, `OCEAN`, `RAINBOW`, `SUMMER` |
-| `select.thermal_camera_image_temperature_unit` | `°C` `°F` `K` `dK` | Unit used for the values drawn on the image |
-| `select.thermal_camera_filtering` | `None` `Low` `High` | 3×3 / 5×5 spatial smoothing |
-| `select.thermal_camera_gain` | `Auto` `1` `0.5` `0.25` | Written to register `0xB9` |
-| `switch.thermal_camera_continuous_capture` | on | Start/stop streaming (`0xB1` = `3` / `0`) |
-| `switch.thermal_camera_automatic_temperature_range` | on | Auto colour scale |
-| `switch.thermal_camera_remove_extreme_values` | off | Trim the configured percentile before scaling |
-| `switch.thermal_camera_show_min_max_markers` | on | Draw hot/cold markers |
-| `switch.thermal_camera_show_colour_bar` | on | Draw the colour bar |
-| `button.thermal_camera_single_frame` | – | Trigger one frame (`0xB1` = `1`) |
-| `button.thermal_camera_reconnect` | – | Reconnect and restart streaming |
-| `button.thermal_camera_disconnect` | – | Close the TCP connection |
-| `button.thermal_camera_increase_frame_rate` | – | Divider − 1 (faster) |
-| `button.thermal_camera_decrease_frame_rate` | – | Divider + 1 (slower) |
+All entities use a Chinese display name; the entity id stays ASCII because
+Home Assistant's slugify() drops CJK characters.
 
-Emissivity, temperature offset, sensitivity and gain are **written to the camera**
-rather than applied in Home Assistant, so the frames, the rendered image and any
-other client see the same numbers. The integration re-applies them after every
-reconnect.
+| Entity id | 名稱 | Description |
+| --- | --- | --- |
+| `camera.thermal_camera` | 熱影像 | False colour thermogram, re-rendered every update |
+| `sensor.thermal_camera_minimum_temperature` | 最低溫 | Coldest pixel of the frame |
+| `sensor.thermal_camera_maximum_temperature` | 最高溫 | Hottest pixel of the frame |
+| `sensor.thermal_camera_average_temperature` | 平均溫 | Mean of all 4960 pixels |
+| `sensor.thermal_camera_centre_temperature` | 中心溫 | Pixel under the crosshair |
+| `sensor.thermal_camera_temperature_1` | 溫度1 | Temperature at (X1, Y1) |
+| `sensor.thermal_camera_temperature_2` | 溫度2 | Temperature at (X2, Y2) |
+| `sensor.thermal_camera_hotspot_x` / `_y` | 熱點 X / 熱點 Y | Coordinates of the hottest pixel |
+| `sensor.thermal_camera_die_temperature` | 晶片溫度 | Sensor die temperature (GFRA header) |
+| `sensor.thermal_camera_vdd` | 供應電壓 | Sensor supply voltage (GFRA header) |
+| `sensor.thermal_camera_frame_rate` | 影格率 | Measured frame rate |
+| `number.thermal_camera_x1` | X1 | Probe 1 X (0–79) |
+| `number.thermal_camera_y1` | Y1 | Probe 1 Y (0–61) |
+| `number.thermal_camera_x2` | X2 | Probe 2 X (0–79) |
+| `number.thermal_camera_y2` | Y2 | Probe 2 Y (0–61) |
+| `number.thermal_camera_emissivity` | 放射率 | 1–100 %, register `0xCA` |
+| `number.thermal_camera_temperature_offset` | 溫度補償 | −12.8…12.7 °C, register `0xCB` |
+| `number.thermal_camera_sensitivity` | 靈敏度 | 0.01–2.55, register `0xC2` |
+| `number.thermal_camera_frame_rate_divider` | 影格率除數 | 0–127, register `0xB4` (0 = maximum FPS) |
+| `number.thermal_camera_percentile` | 極值裁切 | 0–0.2, used when *移除極值* is on |
+| `number.thermal_camera_scale_min` / `_max` | 色階下限 / 色階上限 | Manual colour scale limits |
+| `select.thermal_camera_palette` | 調色盤 | 12 palettes (`INFERNO`, `HEATED_IRON`, …) |
+| `select.thermal_camera_temperature_unit` | 影像溫度單位 | `°C` `°F` `K` `dK` on the image |
+| `select.thermal_camera_filtering` | 濾波 | `None` / `Low` / `High` |
+| `select.thermal_camera_gain` | 增益 | `Auto` `1` `0.5` `0.25`, register `0xB9` |
+| `switch.thermal_camera_streaming` | 連續擷取 | Start/stop streaming (`0xB1` = 3/0) |
+| `switch.thermal_camera_auto_range` | 自動色階 | Automatic colour scale |
+| `switch.thermal_camera_remove_extreme` | 移除極值 | Trim the configured percentile |
+| `switch.thermal_camera_show_markers` | 顯示極值標記 | Draw hot/cold markers |
+| `switch.thermal_camera_show_colorbar` | 顯示色階條 | Draw the colour bar |
+| `button.thermal_camera_fps_increase` | FPS 增加 | Divider − 1 (faster) |
+| `button.thermal_camera_fps_decrease` | FPS 減少 | Divider + 1 (slower) |
+| `button.thermal_camera_disconnect` | 中斷連線 | Close the TCP connection |
+| `button.thermal_camera_reconnect` | 重新連線 | Reconnect and restart streaming |
+| `button.thermal_camera_single_frame` | 單張擷取 | Trigger one frame (`0xB1` = 1) |
+
+> Entity ids changed in 2.1.0 (`probe_1_x` → `x1`, `probe_1_temperature` →
+> `temperature_1`, `scale_minimum` → `scale_min`, `increase_frame_rate` →
+> `fps_increase`, …).  Rename them back in the entity settings if a dashboard
+> depends on the old ids.
 
 ### Probe coordinates
 

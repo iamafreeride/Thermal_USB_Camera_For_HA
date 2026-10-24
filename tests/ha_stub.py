@@ -276,6 +276,10 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
         def unique_id(self):
             return getattr(self, "_attr_unique_id", None)
 
+        @property
+        def name(self):
+            return getattr(self, "_attr_name", None)
+
     sensor.SensorDeviceClass = SensorDeviceClass
     sensor.SensorStateClass = SensorStateClass
     sensor.SensorEntityDescription = SensorEntityDescription
@@ -295,6 +299,10 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
         def unique_id(self):
             return getattr(self, "_attr_unique_id", None)
 
+        @property
+        def name(self):
+            return getattr(self, "_attr_name", None)
+
     number.NumberDeviceClass = NumberDeviceClass
     number.NumberMode = NumberMode
     number.NumberEntity = NumberEntity
@@ -302,6 +310,10 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
     select = _module("homeassistant.components.select")
 
     class SelectEntity:
+        @property
+        def name(self):
+            return getattr(self, "_attr_name", None)
+
         @property
         def unique_id(self):
             return getattr(self, "_attr_unique_id", None)
@@ -320,6 +332,10 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
 
     class SwitchEntity:
         @property
+        def name(self):
+            return getattr(self, "_attr_name", None)
+
+        @property
         def unique_id(self):
             return getattr(self, "_attr_unique_id", None)
 
@@ -328,6 +344,10 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
     button = _module("homeassistant.components.button")
 
     class ButtonEntity:
+        @property
+        def name(self):
+            return getattr(self, "_attr_name", None)
+
         @property
         def unique_id(self):
             return getattr(self, "_attr_unique_id", None)

@@ -1,5 +1,19 @@
 ﻿# Changelog
 
+## 2.1.0
+
+* Every entity now carries a **Chinese display name**, independent of the Home
+  Assistant language setting: 熱影像, 最低溫, 最高溫, 平均溫, 中心溫, 溫度1,
+  溫度2, 熱點 X/Y, 晶片溫度, 供應電壓, 影格率, X1/Y1/X2/Y2, 放射率, 溫度補償,
+  靈敏度, 影格率除數, 極值裁切, 色階上下限, 調色盤, 影像溫度單位, 濾波, 增益,
+  連續擷取, 自動色階, 移除極值, 顯示極值標記/色階條, FPS 增加, FPS 減少,
+  中斷連線, 重新連線, 單張擷取.
+* Entity ids are pinned to ASCII (`number.thermal_camera_x1`,
+  `sensor.thermal_camera_temperature_1`, `button.thermal_camera_fps_increase`, …)
+  because `slugify()` drops CJK characters and would otherwise generate empty ids.
+* Added `translations/zh-Hant.json` and `translations/zh-Hans.json` for the config
+  and options dialogs.
+
 ## 2.0.1
 
 * Fixed `Unknown error occurred` when adding or reconfiguring the integration:

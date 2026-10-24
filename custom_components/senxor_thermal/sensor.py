@@ -48,7 +48,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="minimum_temperature",
         translation_key="minimum_temperature",
-        name="Minimum temperature",
+        name="最低溫",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -58,7 +58,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="maximum_temperature",
         translation_key="maximum_temperature",
-        name="Maximum temperature",
+        name="最高溫",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -68,7 +68,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="average_temperature",
         translation_key="average_temperature",
-        name="Average temperature",
+        name="平均溫",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -78,7 +78,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="center_temperature",
         translation_key="center_temperature",
-        name="Centre temperature",
+        name="中心溫",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -88,7 +88,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="probe_1_temperature",
         translation_key="probe_1_temperature",
-        name="Probe 1 temperature",
+        name="溫度1",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -99,7 +99,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="probe_2_temperature",
         translation_key="probe_2_temperature",
-        name="Probe 2 temperature",
+        name="溫度2",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -110,7 +110,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="hotspot_x",
         translation_key="hotspot_x",
-        name="Hot spot X",
+        name="熱點 X",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:axis-x-arrow",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -119,7 +119,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="hotspot_y",
         translation_key="hotspot_y",
-        name="Hot spot Y",
+        name="熱點 Y",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:axis-y-arrow",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -128,7 +128,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="die_temperature",
         translation_key="die_temperature",
-        name="Sensor die temperature",
+        name="晶片溫度",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -140,7 +140,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="vdd",
         translation_key="vdd",
-        name="Supply voltage",
+        name="供應電壓",
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -152,7 +152,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="frame_rate",
         translation_key="frame_rate",
-        name="Frame rate",
+        name="影格率",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="fps",
         icon="mdi:speedometer",
@@ -183,9 +183,10 @@ class SenXorSensor(SenXorEntity, SensorEntity):
         entry: ConfigEntry,
         description: SenXorSensorDescription,
     ) -> None:
-        super().__init__(coordinator, entry, description.key)
+        super().__init__(coordinator, entry, description.key, "sensor")
         self.entity_description = description
         self._attr_translation_key = description.translation_key
+        self._attr_name = description.name
 
     @property
     def native_value(self) -> float | int | None:

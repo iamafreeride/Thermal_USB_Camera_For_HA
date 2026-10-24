@@ -32,33 +32,33 @@ class SenXorButtonDescription:
 BUTTONS: tuple[SenXorButtonDescription, ...] = (
     SenXorButtonDescription(
         key="single_frame",
-        name="Single frame",
+        name="單張擷取",
         action=lambda coord: coord.async_single_frame(),
         icon="mdi:camera-iris",
     ),
     SenXorButtonDescription(
         key="reconnect",
-        name="Reconnect",
+        name="重新連線",
         action=lambda coord: coord.async_connect(),
         icon="mdi:lan-connect",
         needs_connection=False,
     ),
     SenXorButtonDescription(
         key="disconnect",
-        name="Disconnect",
+        name="中斷連線",
         action=lambda coord: coord.async_shutdown(),
         icon="mdi:lan-disconnect",
         needs_connection=False,
     ),
     SenXorButtonDescription(
         key="increase_frame_rate",
-        name="Increase frame rate",
+        name="FPS 增加",
         action=lambda coord: coord.async_frame_rate_up(),
         icon="mdi:speedometer",
     ),
     SenXorButtonDescription(
         key="decrease_frame_rate",
-        name="Decrease frame rate",
+        name="FPS 減少",
         action=lambda coord: coord.async_frame_rate_down(),
         icon="mdi:speedometer-slow",
     ),
@@ -86,9 +86,10 @@ class SenXorButton(SenXorEntity, ButtonEntity):
         entry: ConfigEntry,
         description: SenXorButtonDescription,
     ) -> None:
-        super().__init__(coordinator, entry, description.key)
+        super().__init__(coordinator, entry, description.key, "button")
         self.entity_description = description
         self._attr_translation_key = description.key
+        self._attr_name = description.name
         self._attr_icon = description.icon
 
     @property

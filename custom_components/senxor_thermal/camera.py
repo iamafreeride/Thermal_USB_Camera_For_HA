@@ -47,7 +47,8 @@ class SenXorThermalCamera(CoordinatorEntity[SenXorCoordinator], Camera):
     """A still image camera that renders the thermogram at full resolution."""
 
     _attr_has_entity_name = True
-    _attr_name = None
+    _attr_name = "熱影像"
+    _attr_translation_key = "thermal_image"
     _attr_brand = MANUFACTURER
     _attr_model = MODEL
     _attr_supported_features = CameraEntityFeature(0)
@@ -56,6 +57,8 @@ class SenXorThermalCamera(CoordinatorEntity[SenXorCoordinator], Camera):
         CoordinatorEntity.__init__(self, coordinator)
         Camera.__init__(self)
         self._attr_unique_id = f"{entry.entry_id}_camera"
+        # Chinese names slugify to an empty object id; pin the id explicitly.
+        self.entity_id = "camera.thermal_camera"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name=entry.title,

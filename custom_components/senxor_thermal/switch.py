@@ -38,7 +38,7 @@ class SenXorSwitchDescription:
 SWITCHES: tuple[SenXorSwitchDescription, ...] = (
     SenXorSwitchDescription(
         key="streaming",
-        name="Continuous capture",
+        name="連續擷取",
         getter=lambda coord: coord.settings.streaming,
         on=lambda coord: coord.async_set_streaming(True),
         off=lambda coord: coord.async_set_streaming(False),
@@ -47,7 +47,7 @@ SWITCHES: tuple[SenXorSwitchDescription, ...] = (
     ),
     SenXorSwitchDescription(
         key="auto_range",
-        name="Automatic temperature range",
+        name="自動色階",
         getter=lambda coord: coord.settings.auto_range,
         on=lambda coord: _set_option(coord, auto_range=True),
         off=lambda coord: _set_option(coord, auto_range=False),
@@ -55,7 +55,7 @@ SWITCHES: tuple[SenXorSwitchDescription, ...] = (
     ),
     SenXorSwitchDescription(
         key="remove_extreme",
-        name="Remove extreme values",
+        name="移除極值",
         getter=lambda coord: coord.settings.remove_extreme,
         on=lambda coord: _set_option(coord, remove_extreme=True),
         off=lambda coord: _set_option(coord, remove_extreme=False),
@@ -63,7 +63,7 @@ SWITCHES: tuple[SenXorSwitchDescription, ...] = (
     ),
     SenXorSwitchDescription(
         key="show_markers",
-        name="Show min/max markers",
+        name="顯示極值標記",
         getter=lambda coord: coord.settings.show_markers,
         on=lambda coord: _set_option(coord, show_markers=True),
         off=lambda coord: _set_option(coord, show_markers=False),
@@ -71,7 +71,7 @@ SWITCHES: tuple[SenXorSwitchDescription, ...] = (
     ),
     SenXorSwitchDescription(
         key="show_colorbar",
-        name="Show colour bar",
+        name="顯示色階條",
         getter=lambda coord: coord.settings.show_colorbar,
         on=lambda coord: _set_option(coord, show_colorbar=True),
         off=lambda coord: _set_option(coord, show_colorbar=False),
@@ -101,9 +101,10 @@ class SenXorSwitch(SenXorEntity, SwitchEntity):
         entry: ConfigEntry,
         description: SenXorSwitchDescription,
     ) -> None:
-        super().__init__(coordinator, entry, description.key)
+        super().__init__(coordinator, entry, description.key, "switch")
         self.entity_description = description
         self._attr_translation_key = description.key
+        self._attr_name = description.name
         self._attr_icon = description.icon
         self._attr_entity_category = description.entity_category
 
