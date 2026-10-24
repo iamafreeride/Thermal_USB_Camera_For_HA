@@ -400,7 +400,7 @@ async def async_probe(host: str, port: int, timeout: float = 10.0) -> ThermalFra
     """
     reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout)
     try:
-        writer.write(build_wreg(REG_STREAM_START))
+        writer.write(build_wreg(REG_FRAME_MODE, FRAME_MODE_CONTINUOUS))
         await writer.drain()
         buffer = b""
         loop = asyncio.get_running_loop()
@@ -417,7 +417,7 @@ async def async_probe(host: str, port: int, timeout: float = 10.0) -> ThermalFra
         raise SenXorProtocolError("no thermal frame received")
     finally:
         try:
-            writer.write(build_wreg(REG_STREAM_STOP))
+            writer.write(build_wreg(REG_FRAME_MODE, FRAME_MODE_STOP))
             await writer.drain()
             await asyncio.sleep(0.1)
         except Exception:  # noqa: BLE001 - device may already be gone

@@ -1,5 +1,13 @@
 ﻿# Changelog
 
+## 2.0.1
+
+* Fixed `Unknown error occurred` when adding or reconfiguring the integration:
+  the config-flow probe still referenced the pre-2.0 register constants, so it
+  raised `NameError` instead of returning a readable `cannot_connect` error.
+* Added regression tests for the probe (fake camera server), the full
+  `async_setup_entry` / `async_unload_entry` path and the config-flow import.
+
 ## 2.0.0
 
 Ported the entity set of the companion integration

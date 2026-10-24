@@ -20,10 +20,8 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
-    CONF_JPEG_QUALITY,
     CONF_PORT,
     CONF_SCAN_INTERVAL,
-    DEFAULT_JPEG_QUALITY,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     SERVICE_SNAPSHOT,
