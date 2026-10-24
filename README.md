@@ -23,7 +23,7 @@ button.*                     single frame, restart stream, frame rate up/down
 ![Rendered thermogram](docs/images/thermogram.jpg)
 
 The image above is produced by this integration from a real frame of the
-`192.168.11.153` camera (HEATED_IRON palette, automatic range, colour bar,
+camera (HEATED_IRON palette, automatic range, colour bar,
 min/max markers and centre readout — the same overlays the Windows viewer draws).
 
 ## Installation
@@ -240,7 +240,7 @@ containing 4960 little-endian `uint16` deci-Kelvin samples.
 
 1. HACS → 整合 → 右上角 ⋮ → 自訂儲存庫，貼上本專案網址，類別選「Integration」。
 2. 安裝 **SenXor Thermal Camera** 後重新啟動 Home Assistant。
-3. 設定 → 裝置與服務 → 新增整合 → 搜尋 `SenXor` → 輸入 `192.168.11.153`、連接埠 `3333`。
+3. 設定 → 裝置與服務 → 新增整合 → 搜尋 `SenXor` → 輸入 `IP`、連接埠 `3333`。
 4. 相機會出現在 `camera.thermal_camera`，並附上最高/最低/平均/中心溫度感測器、色彩盤、
    濾波、放射率與色階控制。
 5. 注意：原廠 Windows 檢視器同一時間只能有一個連線，使用前請先關閉。
