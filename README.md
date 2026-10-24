@@ -30,10 +30,10 @@ min/max markers and centre readout — the same overlays the Windows viewer draw
 
 ### HACS (recommended)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=YOUR_GITHUB_USER&repository=Thermal_USB_Camera_For_HA&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=iamafreeride&repository=Thermal_USB_Camera_For_HA&category=integration)
 
 1. HACS → **Integrations** → ⋮ → **Custom repositories**
-2. Add `https://github.com/YOUR_GITHUB_USER/Thermal_USB_Camera_For_HA` with category **Integration**
+2. Add `https://github.com/iamafreeride/Thermal_USB_Camera_For_HA` with category **Integration**
 3. Install **SenXor Thermal Camera**, then restart Home Assistant
 4. **Settings → Devices & Services → Add Integration → SenXor Thermal Camera**
 5. Enter the camera address (default port `3333`) and submit — the flow connects
