@@ -1,0 +1,11 @@
+﻿
+===================================================================
+Protocol Hierarchy Statistics
+Filter: 
+
+frame                                    frames:60 bytes:64860
+  eth                                    frames:60 bytes:64860
+    ip                                   frames:60 bytes:64860
+      tcp                                frames:60 bytes:64860
+        data                             frames:54 bytes:64536
+===================================================================

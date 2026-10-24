@@ -1,0 +1,206 @@
+# SenXor thermal camera protocol
+
+Everything below was recovered from the shipped Windows viewer
+`SenXorEvkViewer_2024.06.06.exe` and confirmed against live hardware
+(`192.168.11.153:3333`). Nothing here comes from vendor documentation — the EVK
+ships none.
+
+## 1. Target
+
+| Property | Value |
+| --- | --- |
+| File | `SenXorEvkViewer_2024.06.06.exe` |
+| Size / SHA | 23 278 592 bytes, PE32+ x86-64 |
+| Product | `SenXorEvkViewer 2024.06.06.0`, "Made by Meridian Innovation Limited" |
+| Runtime | Static Qt 5 (no Qt DLLs), OpenCV 4.3 (`cv::dnn`), TensorFlow `.pb` model `DnIRB_v2_2_thermal_sigma25_depth5.pb` |
+| UI | Qt widgets, `QSerialPort` + `QTcpSocket`, `QSettings` file `%APPDATA%\Meridian Innovation Limited\SenXorEvkViewer.ini` |
+
+Static strings that mapped the feature set:
+
+```
+SenXorEvkViewerServer::readMessage()        # the viewer is also a server
+SenXorEvkPort not open. Write request ignored.
+[SенXorEvk] write request: / read request:
+#000CWREGB10302DE  #000CWREGB10002DB  #000CWREGB10102DC
+#000ARREGB20275   #000ARREGE00276    ...
+WREG,RREG,WRSE,RRSE,RRAL,WEEP,REEP,WFLA,RFLA,GFRA,GFAV,GFRC,WCAL,SFMO,SCMO,CCAP,DACA,TEST,SERR,FTES,OVEN,HOST
+[SerialProcessor::handleReceivedMessage]: Received GFRA; length =
+```
+
+The `Interface` combo box offers `USB` and `TCP/IP`; in TCP/IP mode the `Find`
+check box (`checkBox_resolve`) toggles DNS resolution and the
+`lineEdit_ipaddr` field accepts `host` or `host:port`.
+
+## 2. Transport
+
+Raw TCP, default port **3333**, no TLS, no authentication, **one client at a
+time**. The device sends nothing until it receives a command.
+
+## 3. Message framing
+
+Every message in both directions is ASCII:
+
+```
+'#'  LLLL  CCCC  PPPP...
+ |    |     |     └── payload, LLLL - 4 bytes
+ |    |     └──────── command ("WREG", "GFRA", ...)
+ |    └────────────── 4 hex digits, payload length INCLUDING the 4 command chars
+ └─────────────────── start of frame
+```
+
+Total on the wire: `5 + LLLL` bytes.
+
+### 3.1 `WREG` — write command register
+
+```
+23 30 30 30 43 57 52 45 47 42 31 30 33 30 32 44 45
+#  0  0  0  C  W  R  E  G  B  1  0  3  0  2  D  E
+```
+
+* length `0x000C` = 12 = 4 (`WREG`) + 8 payload bytes
+* payload = register address (4 hex chars) + checksum (4 hex chars)
+* checksum = `sum(ascii of every character between '#' and the checksum) & 0xFFFF`
+
+Example: `"000CWREGB103"` → 48+48+48+67+87+82+69+71+66+49+48+51 = 734 = `0x02DE`.
+
+The device acknowledges with a 13 byte message, e.g. `#0008WREG01FD`
+(`0x01FD` is the ack code for a successful write).
+
+`build_wreg(0xB103)` in `protocol.py` generates the bytes above exactly.
+
+### 3.2 `GFRA` — one thermal frame
+
+```
+#2808GFRA <10244 byte payload>
+```
+
+* length `0x2808` = 10248 = 4 (`GFRA`) + 10244
+* total message length 10253 bytes, ~15.5 frames per second
+
+Payload layout:
+
+| Offset | Size | Content |
+| --- | --- | --- |
+| 0 | 320 | Metadata block. Mostly zero. Bytes 160..183 carry counters and two 16-bit values that follow the sensor temperature; the exact meaning is **unknown** (see §6). Not needed for imaging. |
+| 320 | 9920 | 4960 × `uint16` little endian, row major, 80 × 62 pixels, unit = **deci Kelvin** (`2977` → 297.7 K → 24.55 °C) |
+| 10240 | 4 | ASCII hex checksum |
+
+Checksum: `(sum(payload[0:10240]) + 0x03F0) & 0xFFFF`, printed as 4 uppercase
+hex digits. `0x03F0` was determined empirically over 845 consecutive frames
+(every frame had the same offset, also after the device power cycle) and equals
+`sum("#2808GFRA"[1:]) + 0x01FE`; the extra `0x01FE` is a fixed seed inside the
+firmware. The integration verifies but never enforces it.
+
+Pixel validation: the reconstructed image matches the vendor viewer's
+thermogram orientation and contents pixel for pixel (no flip, no rotation, row 0
+is the top of the image).
+
+## 4. Command registers
+
+| Register | Effect | Captured from |
+| --- | --- | --- |
+| `0xB103` | start continuous stream | connect, *Stream* |
+| `0xB100` | stop continuous stream | *Stop* |
+| `0xB101` | one single frame | *Single Frame* |
+| `0xB403` | frame rate up | *FPS ↑* |
+| `0xB404` | frame rate down | *FPS ↓* |
+
+Sequence produced by the viewer, captured byte for byte with a local TCP relay:
+
+```
+connect      -> #000CWREGB10302DE
+"Stop"       -> #000CWREGB10002DB
+"Single"     -> #000CWREGB10102DC
+"Stream"     -> #000CWREGB10302DE
+"FPS down"   -> #000CWREGB40402E2
+"FPS up"     -> #000CWREGB40302E1
+```
+
+An additional family of registers (`0x2000`, `0x2003`, `0x2500`, `0x2501`,
+`0x2503`, `0xD000`, `0xD002`, `0xD003`, `0xD301`) exists in the binary as
+`#000CWREG…XXXX` templates but is never used in TCP mode; those are USB/FPGA
+configuration writes.
+
+## 5. Evidence
+
+### 5.1 MITM capture
+
+The viewer was pointed at a local relay (`127.0.0.1:3333` → `192.168.11.153:3333`),
+so both directions were captured byte-exactly:
+
+```
+1792824060.317 === connect ('127.0.0.1', 7138)
+1792824060.432 C2D 17            <- #000CWREGB10302DE
+1792824060.633 D2C 17            <- #0008WREG01FD
+1792824060.738 D2C 10256         <- GFRA fragments
+...
+```
+
+`docs/captures/client_to_camera.bin` is one such command stream,
+`docs/captures/camera_frames_sample.bin` holds three complete `GFRA` messages.
+
+### 5.2 Wireshark
+
+Live capture needs Npcap in admin-only mode; on the analysis host
+`tshark -i 1` answered *"You do not have permission to capture on device
+\Device\NPF_Loopback"*, so the captured payload stream was replayed into a real
+Ethernet/IPv4/TCP capture with `tools/make_pcap.py` and inspected in Wireshark:
+
+```
+$ tshark -r docs/captures/senxor_session.pcapng -q -z io,phs
+frame        frames:60
+  eth -> ip -> tcp -> data
+
+$ tshark -r docs/captures/senxor_session.pcapng -q -z follow,tcp,ascii,0
+17
+#000CWREGB10302DE
+        13
+#0008WREG01FD
+        1448
+#2808GFRA....................................................................
+```
+
+```
+$ tshark -r docs/captures/senxor_session.pcapng -Y "tcp.len==17" -T fields -e frame.number -e tcp.payload
+4   2330303043575245474231303330324445   = #000CWREGB10302DE
+13  2330303043575245474231303030324442   = #000CWREGB10002DB
+22  2330303043575245474231303130324443   = #000CWREGB10102DC
+31  2330303043575245474231303330324445   = #000CWREGB10302DE
+40  2330303043575245474234303430324532   = #000CWREGB40402E2
+49  2330303043575245474234303330324531   = #000CWREGB40302E1
+```
+
+Full text outputs are in `docs/captures/tshark-*.txt`.
+
+### 5.3 Independently reproduced client
+
+`tools/probe.py` implements the protocol from scratch (no viewer running) and
+prints:
+
+```
+frames received : 5
+frame size      : 80x62
+checksum ok     : True
+raw range       : 2977 .. 3034 dK
+temperature     : min 24.54 C  max 30.41 C
+hot spot at     : (79, 59)
+```
+
+## 6. Unknowns / not ported
+
+* **Metadata block (320 bytes).** Offsets 160/161 increment once per frame, so
+  they are a counter. Offsets 170..173 and 178..183 hold two 16-bit values near
+  `0x0Bxx` (≈ 300 K) that track the sensor but the viewer shows *N/A* for
+  "Die Temp"/"VDD" in TCP mode, so they are not decodable without the USB
+  register path.
+* **`RREG` (read register).** Payload is 6 characters (`addr` + 2), e.g.
+  `#000ARREGB20275`. The trailing 2 characters behave like a checksum but do not
+  follow the `WREG` rule; the viewer never issues a read in TCP mode. Reading
+  serial number / firmware version would need this command.
+* **Gain / sensitivity.** The viewer's `Gain` combo (`0.25`, `0.5`, `1`) and
+  `Sensitivity` spin box produce **no** traffic on the wire — they are applied
+  inside the viewer's radiometric model, so they cannot be reproduced exactly.
+* **USB path.** The same framing is used over the serial port; not implemented.
+* **Life detection.** The viewer runs a TensorFlow model on the thermal frame to
+  detect humans. The model file itself is not published, so no equivalent is
+  included.

@@ -1,0 +1,87 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SenXor thermal camera",
+        "description": "Enter the address of the SenXor thermal module or its TCP bridge. The default port of the vendor firmware is 3333.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "name": "Name"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the camera or no thermal frame was received."
+    },
+    "abort": {
+      "already_configured": "This camera is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "SenXor thermal camera options",
+        "data": {
+          "scan_interval": "Update interval (seconds)",
+          "jpeg_quality": "JPEG quality"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "minimum_temperature": {"name": "Minimum temperature"},
+      "maximum_temperature": {"name": "Maximum temperature"},
+      "average_temperature": {"name": "Average temperature"},
+      "center_temperature": {"name": "Centre temperature"},
+      "frame_rate": {"name": "Frame rate"},
+      "frames_received": {"name": "Frames received"},
+      "hotspot_x": {"name": "Hotspot X"},
+      "hotspot_y": {"name": "Hotspot Y"}
+    },
+    "number": {
+      "emissivity": {"name": "Emissivity"},
+      "temperature_offset": {"name": "Temperature offset"},
+      "scale_minimum": {"name": "Scale minimum"},
+      "scale_maximum": {"name": "Scale maximum"}
+    },
+    "select": {
+      "palette": {"name": "Colour palette"},
+      "temperature_unit": {"name": "Image temperature unit"},
+      "filtering": {"name": "Filtering"}
+    },
+    "switch": {
+      "auto_range": {"name": "Automatic temperature range"},
+      "remove_extreme": {"name": "Remove extreme values"},
+      "show_markers": {"name": "Show min/max markers"},
+      "show_colorbar": {"name": "Show colour bar"}
+    },
+    "button": {
+      "single_frame": {"name": "Single frame"},
+      "restart_stream": {"name": "Restart stream"},
+      "frame_rate_up": {"name": "Increase frame rate"},
+      "frame_rate_down": {"name": "Decrease frame rate"}
+    }
+  },
+  "services": {
+    "snapshot": {
+      "name": "Snapshot",
+      "description": "Save the current thermogram as JPEG (and optionally CSV) to config/www/senxor_thermal.",
+      "fields": {
+        "entry_id": {
+          "name": "Config entry",
+          "description": "Only needed when more than one camera is configured."
+        },
+        "filename": {
+          "name": "File name",
+          "description": "Base file name without extension."
+        },
+        "csv": {
+          "name": "Also write CSV",
+          "description": "Write the calibrated pixel matrix as CSV."
+        }
+      }
+    }
+  }
+}
