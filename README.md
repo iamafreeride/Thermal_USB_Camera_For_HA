@@ -247,4 +247,5 @@ containing 4960 little-endian `uint16` deci-Kelvin samples.
 
 ## License
 
-MIT – see [LICENSE](LICENSE). Not affiliated with Meridian Innovation Limited.
+MIT – see [LICENSE](LICENSE). Not affiliated with, endorsed by, or supported by
+Meridian Innovation Limited. "SenXor" is a trademark of its respective owner.
