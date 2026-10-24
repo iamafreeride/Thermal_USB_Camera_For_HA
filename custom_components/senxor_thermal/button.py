@@ -1,4 +1,4 @@
-"""Button platform: capture, connection and frame-rate control."""
+"""Button platform: FPS and connection control."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import Awaitable, Callable
 
-from homeassistant.components.button import ButtonEntity
+from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -19,42 +19,43 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
-class SenXorButtonDescription:
-    """Description of an action button."""
+class SenXorButtonDescription(ButtonEntityDescription):
+    """Describes a SenXor action button."""
 
-    key: str
-    name: str
     action: Callable[[SenXorCoordinator], Awaitable[None]]
-    icon: str
     needs_connection: bool = True
 
 
 BUTTONS: tuple[SenXorButtonDescription, ...] = (
     SenXorButtonDescription(
         key="reconnect",
+        translation_key="reconnect",
         name="重新連線",
-        action=lambda coord: coord.async_connect(),
         icon="mdi:lan-connect",
+        action=lambda coord: coord.async_connect(),
         needs_connection=False,
     ),
     SenXorButtonDescription(
         key="disconnect",
+        translation_key="disconnect",
         name="中斷連線",
-        action=lambda coord: coord.async_shutdown(),
         icon="mdi:lan-disconnect",
+        action=lambda coord: coord.async_shutdown(),
         needs_connection=False,
     ),
     SenXorButtonDescription(
         key="increase_frame_rate",
+        translation_key="increase_frame_rate",
         name="FPS 增加",
-        action=lambda coord: coord.async_frame_rate_up(),
         icon="mdi:speedometer",
+        action=lambda coord: coord.async_frame_rate_up(),
     ),
     SenXorButtonDescription(
         key="decrease_frame_rate",
+        translation_key="decrease_frame_rate",
         name="FPS 減少",
-        action=lambda coord: coord.async_frame_rate_down(),
         icon="mdi:speedometer-slow",
+        action=lambda coord: coord.async_frame_rate_down(),
     ),
 )
 
@@ -82,7 +83,7 @@ class SenXorButton(SenXorEntity, ButtonEntity):
     ) -> None:
         super().__init__(coordinator, entry, description.key, "button")
         self.entity_description = description
-        self._attr_translation_key = description.key
+        self._attr_translation_key = description.translation_key
         self._attr_name = description.name
         self._attr_icon = description.icon
 

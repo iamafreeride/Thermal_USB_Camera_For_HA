@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
-from homeassistant.components.select import SelectEntity
+from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
@@ -25,50 +25,53 @@ async def _set_option(coordinator: SenXorCoordinator, **changes: Any) -> None:
 
 
 @dataclass(frozen=True, kw_only=True)
-class SenXorSelectDescription:
-    """Description of a select entity."""
+class SenXorSelectDescription(SelectEntityDescription):
+    """Describes a select entity and how to apply it."""
 
-    key: str
-    name: str
-    options: list[str]
     getter: Callable[[SenXorCoordinator], str]
     setter: Callable[[SenXorCoordinator, str], Awaitable[None]]
-    icon: str
-    entity_category: EntityCategory | None = None
 
 
 SELECTS: tuple[SenXorSelectDescription, ...] = (
     SenXorSelectDescription(
         key="palette",
+        translation_key="palette",
         name="調色盤",
         options=PALETTE_NAMES,
         getter=lambda coord: coord.settings.palette,
         setter=lambda coord, value: _set_option(coord, palette=value),
         icon="mdi:palette",
+        entity_category=None,
     ),
     SenXorSelectDescription(
         key="temperature_unit",
+        translation_key="temperature_unit",
         name="影像溫度單位",
         options=TEMPERATURE_UNITS,
         getter=lambda coord: coord.settings.unit,
         setter=lambda coord, value: _set_option(coord, unit=value),
         icon="mdi:temperature-celsius",
+        entity_category=None,
     ),
     SenXorSelectDescription(
         key="filtering",
+        translation_key="filtering",
         name="濾波",
         options=FILTER_MODES,
         getter=lambda coord: coord.settings.filtering,
         setter=lambda coord, value: _set_option(coord, filtering=value),
         icon="mdi:blur",
+        entity_category=None,
     ),
     SenXorSelectDescription(
         key="gain",
+        translation_key="gain",
         name="增益",
         options=GAIN_MODES,
         getter=lambda coord: coord.settings.gain,
         setter=lambda coord, value: coord.async_set_gain(value),
         icon="mdi:amplifier",
+        entity_category=None,
     ),
 )
 
@@ -96,7 +99,7 @@ class SenXorSelect(SenXorEntity, SelectEntity):
     ) -> None:
         super().__init__(coordinator, entry, description.key, "select")
         self.entity_description = description
-        self._attr_translation_key = description.key
+        self._attr_translation_key = description.translation_key
         self._attr_name = description.name
         self._attr_options = description.options
         self._attr_icon = description.icon

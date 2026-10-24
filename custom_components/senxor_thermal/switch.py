@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import Awaitable, Callable
 
-from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
@@ -23,21 +23,18 @@ async def _set_option(coordinator: SenXorCoordinator, **changes: bool) -> None:
 
 
 @dataclass(frozen=True, kw_only=True)
-class SenXorSwitchDescription:
-    """Description of a boolean setting."""
+class SenXorSwitchDescription(SwitchEntityDescription):
+    """Describes a boolean setting."""
 
-    key: str
-    name: str
     getter: Callable[[SenXorCoordinator], bool]
     on: Callable[[SenXorCoordinator], Awaitable[None]]
     off: Callable[[SenXorCoordinator], Awaitable[None]]
-    icon: str
-    entity_category: EntityCategory | None = None
 
 
 SWITCHES: tuple[SenXorSwitchDescription, ...] = (
     SenXorSwitchDescription(
         key="streaming",
+        translation_key="streaming",
         name="連續擷取",
         getter=lambda coord: coord.settings.streaming,
         on=lambda coord: coord.async_set_streaming(True),
@@ -47,35 +44,43 @@ SWITCHES: tuple[SenXorSwitchDescription, ...] = (
     ),
     SenXorSwitchDescription(
         key="auto_range",
+        translation_key="auto_range",
         name="自動色階",
         getter=lambda coord: coord.settings.auto_range,
         on=lambda coord: _set_option(coord, auto_range=True),
         off=lambda coord: _set_option(coord, auto_range=False),
         icon="mdi:autorenew",
+        entity_category=None,
     ),
     SenXorSwitchDescription(
         key="remove_extreme",
+        translation_key="remove_extreme",
         name="移除極值",
         getter=lambda coord: coord.settings.remove_extreme,
         on=lambda coord: _set_option(coord, remove_extreme=True),
         off=lambda coord: _set_option(coord, remove_extreme=False),
         icon="mdi:chart-bell-curve",
+        entity_category=None,
     ),
     SenXorSwitchDescription(
         key="show_markers",
+        translation_key="show_markers",
         name="顯示極值標記",
         getter=lambda coord: coord.settings.show_markers,
         on=lambda coord: _set_option(coord, show_markers=True),
         off=lambda coord: _set_option(coord, show_markers=False),
         icon="mdi:crosshairs-gps",
+        entity_category=None,
     ),
     SenXorSwitchDescription(
         key="show_colorbar",
+        translation_key="show_colorbar",
         name="顯示色階條",
         getter=lambda coord: coord.settings.show_colorbar,
         on=lambda coord: _set_option(coord, show_colorbar=True),
         off=lambda coord: _set_option(coord, show_colorbar=False),
         icon="mdi:gradient-vertical",
+        entity_category=None,
     ),
 )
 
@@ -103,7 +108,7 @@ class SenXorSwitch(SenXorEntity, SwitchEntity):
     ) -> None:
         super().__init__(coordinator, entry, description.key, "switch")
         self.entity_description = description
-        self._attr_translation_key = description.key
+        self._attr_translation_key = description.translation_key
         self._attr_name = description.name
         self._attr_icon = description.icon
         self._attr_entity_category = description.entity_category

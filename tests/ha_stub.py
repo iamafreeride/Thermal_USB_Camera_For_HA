@@ -308,6 +308,21 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
         BOX = "box"
         SLIDER = "slider"
 
+    @dataclass(frozen=True, kw_only=True)
+    class NumberEntityDescription:
+        key: str
+        translation_key: str | None = None
+        name: str | None = None
+        icon: str | None = None
+        device_class: Any = None
+        entity_category: Any = None
+        entity_registry_enabled_default: bool = True
+        native_min_value: float = 0.0
+        native_max_value: float = 100.0
+        native_step: float = 1.0
+        native_unit_of_measurement: str | None = None
+        mode: Any = None
+
     class NumberEntity:
         @property
         def unique_id(self):
@@ -315,18 +330,57 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
 
         @property
         def name(self):
+            # HA resolves the fallback name through the description's device_class
+            self.entity_description.device_class  # HA reads this before the name
             return getattr(self, "_attr_name", None)
+
+        @property
+        def entity_registry_enabled_default(self):
+            return self.entity_description.entity_registry_enabled_default
+
+        @property
+        def native_min_value(self):
+            return self.entity_description.native_min_value
+
+        @property
+        def native_max_value(self):
+            return self.entity_description.native_max_value
+
+        @property
+        def native_step(self):
+            return self.entity_description.native_step
+
+        @property
+        def native_unit_of_measurement(self):
+            return self.entity_description.native_unit_of_measurement
 
     number.NumberDeviceClass = NumberDeviceClass
     number.NumberMode = NumberMode
     number.NumberEntity = NumberEntity
+    number.NumberEntityDescription = NumberEntityDescription
 
     select = _module("homeassistant.components.select")
+
+    @dataclass(frozen=True, kw_only=True)
+    class SelectEntityDescription:
+        key: str
+        translation_key: str | None = None
+        name: str | None = None
+        icon: str | None = None
+        device_class: Any = None
+        entity_category: Any = None
+        entity_registry_enabled_default: bool = True
+        options: Any = ()
 
     class SelectEntity:
         @property
         def name(self):
+            self.entity_description.device_class  # HA reads this before the name
             return getattr(self, "_attr_name", None)
+
+        @property
+        def device_class(self):
+            return self.entity_description.device_class
 
         @property
         def unique_id(self):
@@ -341,32 +395,66 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
             return None
 
     select.SelectEntity = SelectEntity
+    select.SelectEntityDescription = SelectEntityDescription
 
     switch = _module("homeassistant.components.switch")
+
+    @dataclass(frozen=True, kw_only=True)
+    class SwitchEntityDescription:
+        key: str
+        translation_key: str | None = None
+        name: str | None = None
+        icon: str | None = None
+        device_class: Any = None
+        entity_category: Any = None
+        entity_registry_enabled_default: bool = True
 
     class SwitchEntity:
         @property
         def name(self):
+            self.entity_description.device_class  # HA reads this before the name
             return getattr(self, "_attr_name", None)
+
+        @property
+        def device_class(self):
+            return self.entity_description.device_class
 
         @property
         def unique_id(self):
             return getattr(self, "_attr_unique_id", None)
 
     switch.SwitchEntity = SwitchEntity
+    switch.SwitchEntityDescription = SwitchEntityDescription
 
     button = _module("homeassistant.components.button")
+
+    @dataclass(frozen=True, kw_only=True)
+    class ButtonEntityDescription:
+        key: str
+        translation_key: str | None = None
+        name: str | None = None
+        icon: str | None = None
+        device_class: Any = None
+        entity_category: Any = None
+        entity_registry_enabled_default: bool = True
 
     class ButtonEntity:
         @property
         def name(self):
+            self.entity_description.device_class  # HA reads this before the name
             return getattr(self, "_attr_name", None)
+
+        @property
+        def device_class(self):
+            return self.entity_description.device_class
 
         @property
         def unique_id(self):
             return getattr(self, "_attr_unique_id", None)
 
     button.ButtonEntity = ButtonEntity
+    button.ButtonEntityDescription = ButtonEntityDescription
+
 
     # -- voluptuous --------------------------------------------------------
     voluptuous = _module("voluptuous")

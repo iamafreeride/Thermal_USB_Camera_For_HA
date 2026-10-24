@@ -81,8 +81,8 @@ class ProbeNumberTest(unittest.TestCase):
             self.assertIn(key, self.entities)
 
     def test_ranges(self) -> None:
-        self.assertEqual(self.entities["probe_1_x"]._attr_native_max_value, 79)
-        self.assertEqual(self.entities["probe_1_y"]._attr_native_max_value, 61)
+        self.assertEqual(self.entities["probe_1_x"].native_max_value, 79)
+        self.assertEqual(self.entities["probe_1_y"].native_max_value, 61)
 
     def test_setting_a_coordinate_persists(self) -> None:
         asyncio.run(self.entities["probe_2_y"].async_set_native_value(10))

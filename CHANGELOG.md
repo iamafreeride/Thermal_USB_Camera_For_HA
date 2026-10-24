@@ -1,5 +1,29 @@
 ﻿# Changelog
 
+## 2.3.0
+
+Fixes **every button, number, select and switch failing to be added**:
+
+```
+Error adding entity button.thermal_camera_fps_increase for domain button with platform senxor_thermal
+AttributeError: 'SenXorButtonDescription' object has no attribute 'device_class'
+```
+
+The description dataclasses were plain `@dataclass` objects instead of subclasses
+of Home Assistant's `ButtonEntityDescription` / `NumberEntityDescription` /
+`SelectEntityDescription` / `SwitchEntityDescription`.  Home Assistant reads
+`entity_description.device_class` and
+`entity_description.entity_registry_enabled_default` while registering an entity,
+so all 4 buttons, 11 numbers, 4 selects and 5 switches were dropped silently.
+Only the sensors and the camera survived because their description already
+inherited the HA dataclass.
+
+* The four descriptions now inherit the matching HA description classes and use
+  the native fields (`native_min_value`, `native_step`, `options`, …).
+* Added a strict test harness that reproduces the HA attribute access, so this
+  regression cannot come back unnoticed.
+* Added `services.yaml` (removes the "Failed to load services.yaml" warning).
+
 ## 2.2.0
 
 * Exactly the four requested buttons: 中斷連線 / 重新連線 / FPS 增加 / FPS 減少
