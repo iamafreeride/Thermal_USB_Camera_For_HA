@@ -67,7 +67,9 @@ async def run(host: str, port: int, frames: int, palette: str) -> int:
     await connection.close()
 
     assert last is not None
-    options = rendering.RenderOptions(palette=palette)
+    # The camera applies emissivity/offset/sensitivity itself (registers
+    # 0xCA / 0xCB / 0xC2); the raw deci-Kelvin samples are already calibrated.
+    options = rendering.RenderOptions(palette=palette, emissivity=1.0, offset=0.0)
     rendered = rendering.render_frame(last, options)
     out = pathlib.Path("frame.jpg")
     out.write_bytes(rendered.jpeg)
@@ -87,6 +89,10 @@ async def run(host: str, port: int, frames: int, palette: str) -> int:
     print(f"temperature     : min {stats.minimum:.2f} C  max {stats.maximum:.2f} C")
     print(f"average/centre  : {stats.mean:.2f} C / {stats.center:.2f} C")
     print(f"hot spot at     : {stats.max_position}")
+    if last.header is not None:
+        print(f"device counter  : {last.header.frame_counter}")
+        print(f"supply voltage  : {last.header.vdd:.4f} V")
+        print(f"die temperature : {last.header.die_temperature:.2f} C")
     print(f"saved           : {out.resolve()}, frame.csv")
     return 0
 

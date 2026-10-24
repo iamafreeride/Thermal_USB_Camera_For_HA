@@ -47,11 +47,11 @@ class ProbeSensorTest(unittest.TestCase):
         self.assertNotIn("frames_received", self.entities)
 
     def test_default_probe_coordinates(self) -> None:
-        self.assertEqual(self.coordinator.settings.probes, ((20, 31), (60, 31)))
+        self.assertEqual(self.coordinator.settings.probes, ((20, 30), (60, 30)))
 
     def test_probe_temperatures_match_pixels(self) -> None:
         values = self.coordinator.data.values
-        for probe, (x, y) in ((1, (20, 31)), (2, (60, 31))):
+        for probe, (x, y) in ((1, (20, 30)), (2, (60, 30))):
             expected = round(values[y * 80 + x], 2)
             self.assertAlmostEqual(self.entities[f"probe_{probe}_temperature"].native_value, expected)
 
@@ -124,7 +124,7 @@ class ProbeRenderTest(unittest.TestCase):
     def test_render_with_probes(self) -> None:
         coordinator, _ = build_coordinator()
         options = coordinator.settings.render_options()
-        self.assertEqual(options.probes, ((20, 31), (60, 31)))
+        self.assertEqual(options.probes, ((20, 30), (60, 30)))
         rendered = rendering.render_values(coordinator.data.values, options)
         self.assertTrue(rendered.jpeg.startswith(b"\xff\xd8"))
 

@@ -1,4 +1,4 @@
-"""Button platform: capture and stream control of the SenXor camera."""
+"""Button platform: capture, connection and frame-rate control."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from typing import Awaitable, Callable
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import SenXorCoordinator
@@ -26,6 +26,7 @@ class SenXorButtonDescription:
     name: str
     action: Callable[[SenXorCoordinator], Awaitable[None]]
     icon: str
+    needs_connection: bool = True
 
 
 BUTTONS: tuple[SenXorButtonDescription, ...] = (
@@ -36,19 +37,27 @@ BUTTONS: tuple[SenXorButtonDescription, ...] = (
         icon="mdi:camera-iris",
     ),
     SenXorButtonDescription(
-        key="restart_stream",
-        name="Restart stream",
+        key="reconnect",
+        name="Reconnect",
         action=lambda coord: coord.async_connect(),
-        icon="mdi:restart",
+        icon="mdi:lan-connect",
+        needs_connection=False,
     ),
     SenXorButtonDescription(
-        key="frame_rate_up",
+        key="disconnect",
+        name="Disconnect",
+        action=lambda coord: coord.async_shutdown(),
+        icon="mdi:lan-disconnect",
+        needs_connection=False,
+    ),
+    SenXorButtonDescription(
+        key="increase_frame_rate",
         name="Increase frame rate",
         action=lambda coord: coord.async_frame_rate_up(),
         icon="mdi:speedometer",
     ),
     SenXorButtonDescription(
-        key="frame_rate_down",
+        key="decrease_frame_rate",
         name="Decrease frame rate",
         action=lambda coord: coord.async_frame_rate_down(),
         icon="mdi:speedometer-slow",
@@ -90,7 +99,7 @@ class SenXorButton(SenXorEntity, ButtonEntity):
     async def async_press(self) -> None:
         """Run the configured action, reconnecting first when necessary."""
         coordinator = self.coordinator
-        if not coordinator.connected:
+        if self.entity_description.needs_connection and not coordinator.connected:
             try:
                 await coordinator.async_connect()
             except Exception as err:  # noqa: BLE001 - surfaced to the user

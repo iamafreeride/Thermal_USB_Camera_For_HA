@@ -44,8 +44,17 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
         FAHRENHEIT = "°F"
         KELVIN = "K"
 
+    class UnitOfElectricPotential(str, enum.Enum):
+        VOLT = "V"
+
+    class EntityCategory(str, enum.Enum):
+        CONFIG = "config"
+        DIAGNOSTIC = "diagnostic"
+
     const.Platform = Platform
     const.UnitOfTemperature = UnitOfTemperature
+    const.UnitOfElectricPotential = UnitOfElectricPotential
+    const.EntityCategory = EntityCategory
     const.CONF_HOST = "host"
     const.CONF_NAME = "name"
 
@@ -244,6 +253,7 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
 
     class SensorDeviceClass(str, enum.Enum):
         TEMPERATURE = "temperature"
+        VOLTAGE = "voltage"
 
     class SensorStateClass(str, enum.Enum):
         MEASUREMENT = "measurement"
@@ -259,6 +269,7 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
         native_unit_of_measurement: str | None = None
         suggested_display_precision: int | None = None
         icon: str | None = None
+        entity_category: Any = None
 
     class SensorEntity:
         @property

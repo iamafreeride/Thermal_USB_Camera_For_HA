@@ -63,27 +63,39 @@ Options (⚙ on the integration card): update interval (seconds) and JPEG qualit
 | `sensor.thermal_camera_maximum_temperature` | °C | Hottest pixel of the current frame |
 | `sensor.thermal_camera_average_temperature` | °C | Mean of all 4960 pixels |
 | `sensor.thermal_camera_centre_temperature` | °C | Pixel under the crosshair |
-| `sensor.thermal_camera_frame_rate` | fps | Measured frame rate |
-| `sensor.thermal_camera_hotspot_x` / `_y` | px | Coordinates of the hottest pixel |
 | `sensor.thermal_camera_probe_1_temperature` | °C | Temperature at probe 1 |
 | `sensor.thermal_camera_probe_2_temperature` | °C | Temperature at probe 2 |
-| `number.thermal_camera_emissivity` | 0.10–1.00 | Grey body emissivity used for the radiance correction |
-| `number.thermal_camera_temperature_offset` | °C | Added to every pixel (viewer's "Temp Offset") |
+| `sensor.thermal_camera_hotspot_x` / `_y` | px | Coordinates of the hottest pixel |
+| `sensor.thermal_camera_die_temperature` | °C | Sensor die temperature (GFRA header) |
+| `sensor.thermal_camera_vdd` | V | Sensor supply voltage (GFRA header) |
+| `sensor.thermal_camera_frame_rate` | fps | Measured frame rate |
+| `number.thermal_camera_emissivity` | 1–100 % | Written to register `0xCA` |
+| `number.thermal_camera_temperature_offset` | −12.8…12.7 °C | Written to register `0xCB` (0.1 K steps) |
+| `number.thermal_camera_sensitivity` | 0.01–2.55 | Written to register `0xC2` |
+| `number.thermal_camera_frame_rate_divider` | 0–127 | Written to register `0xB4` (`0` = maximum FPS) |
+| `number.thermal_camera_percentile` | 0–0.2 | Extreme clipping fraction when *remove extreme* is on |
 | `number.thermal_camera_scale_minimum` / `_maximum` | °C | Manual colour scale limits |
 | `number.thermal_camera_probe_1_x` / `_1_y` | 0–79 / 0–61 | Probe 1 pixel coordinates |
 | `number.thermal_camera_probe_2_x` / `_2_y` | 0–79 / 0–61 | Probe 2 pixel coordinates |
 | `select.thermal_camera_palette` | 12 options | `INFERNO`, `HEATED_IRON`, `BLACK_BODY`, `PLASMA`, `COOLWARM`, `IRON_GLOW`, `GRAYSCALE`, `BONE`, `BEZIER`, `OCEAN`, `RAINBOW`, `SUMMER` |
 | `select.thermal_camera_image_temperature_unit` | `°C` `°F` `K` `dK` | Unit used for the values drawn on the image |
 | `select.thermal_camera_filtering` | `None` `Low` `High` | 3×3 / 5×5 spatial smoothing |
-| `select.thermal_camera_frame_rate_level` | `1`–`4` | Absolute frame rate level, `1` = fastest |
+| `select.thermal_camera_gain` | `Auto` `1` `0.5` `0.25` | Written to register `0xB9` |
+| `switch.thermal_camera_continuous_capture` | on | Start/stop streaming (`0xB1` = `3` / `0`) |
 | `switch.thermal_camera_automatic_temperature_range` | on | Auto colour scale |
-| `switch.thermal_camera_remove_extreme_values` | off | Trim 0.1 % of the extremes before scaling |
+| `switch.thermal_camera_remove_extreme_values` | off | Trim the configured percentile before scaling |
 | `switch.thermal_camera_show_min_max_markers` | on | Draw hot/cold markers |
 | `switch.thermal_camera_show_colour_bar` | on | Draw the colour bar |
-| `button.thermal_camera_single_frame` | – | Trigger one frame (`WREG 0xB101`) |
-| `button.thermal_camera_restart_stream` | – | Reconnect and restart streaming (`WREG 0xB103`) |
-| `button.thermal_camera_increase_frame_rate` | – | One level faster (`0xB400 + level`) |
-| `button.thermal_camera_decrease_frame_rate` | – | One level slower (`0xB400 + level`) |
+| `button.thermal_camera_single_frame` | – | Trigger one frame (`0xB1` = `1`) |
+| `button.thermal_camera_reconnect` | – | Reconnect and restart streaming |
+| `button.thermal_camera_disconnect` | – | Close the TCP connection |
+| `button.thermal_camera_increase_frame_rate` | – | Divider − 1 (faster) |
+| `button.thermal_camera_decrease_frame_rate` | – | Divider + 1 (slower) |
+
+Emissivity, temperature offset, sensitivity and gain are **written to the camera**
+rather than applied in Home Assistant, so the frames, the rendered image and any
+other client see the same numbers. The integration re-applies them after every
+reconnect.
 
 ### Probe coordinates
 
@@ -104,17 +116,12 @@ All buttons stay pressable even while the stream is down: pressing one first
 tries to re-establish the connection, and reports a clear error if the camera is
 unreachable (for example because the Windows viewer holds the stream).
 
-### Frame rate levels
+### Frame rate divider
 
-The firmware does **not** implement relative "faster/slower" commands: the frame
-rate is an absolute level written to `0xB400 + level`, and the viewer always
-writes the *target* level (`0xB401` ... `0xB404`). Measured on the test device:
-level 1 ~ 15.8 fps, level 3 ~ 6.5 fps, level 4 ~ 4.3 fps.
-
-The select exposes the level directly; the two buttons step it (increase = one
-level faster, decrease = one level slower) and the chosen level is stored in the
-config entry and re-applied after a reconnect. Because level 1 is the fastest the
-camera can do, *increase* has no visible effect when the level is already 1.
+`0xB4` is an absolute divider, not an up/down command: `0` selects the maximum
+frame rate and `1…127` select `FPS_MAX / divider`. The two buttons step the
+divider by one and the `Frame rate divider` number lets you jump directly.
+Measured on the test camera: divider `0` → 14.8 fps, `2` → 8.3 fps, `4` → 4.7 fps.
 
 Sensors always report **°C**; Home Assistant converts them to your unit system.
 The *image temperature unit* only affects the numbers drawn on the thermogram,
@@ -175,15 +182,15 @@ action:
 | USB connection | ❌ (same protocol over a serial port; not ported, HA hosts are usually remote) |
 | Connect / Disconnect | ✅ integration setup + *Restart stream* button |
 | Single frame / continuous stream | ✅ buttons + always-on stream |
-| FPS up / down | ✅ buttons + level select (`0xB401`-`0xB404`, level 1 = fastest) |
+| FPS up / down | ✅ buttons + divider number (`0xB4`, 0 = maximum FPS) |
 | 12 colour palettes | ✅ select (tables recreated, not byte-identical) |
 | Auto / manual temperature range, remove extremes | ✅ switches + numbers |
 | Filtering none / low / high | ✅ select |
 | Temperature unit °C/°F/K/dK | ✅ select (image overlay) |
-| Emissivity, temperature offset | ✅ numbers (radiance model, documented) |
-| Sensitivity / gain controls | ⚠️ not ported – the viewer applies them inside its own radiometric model; no register write was observed on the wire |
+| Emissivity, temperature offset, sensitivity | ✅ numbers written to registers `0xCA` / `0xCB` / `0xC2` |
+| Sensitivity / gain controls | ✅ `number.sensitivity` (`0xC2`) and `select.gain` (`0xB9`) |
 | Temperature at pixel (X, Y) | ✅ hotspot/centre sensors + camera attributes |
-| Die info (VDD, die temperature) | ⚠️ the viewer itself shows *N/A* in TCP mode – the registers are only read over USB |
+| Die info (VDD, die temperature) | ✅ decoded from the GFRA header (`sensor.vdd`, `sensor.die_temperature`) |
 | Data recording to text files | ✅ `senxor_thermal.snapshot` (JPEG + CSV) |
 | Life detection (TensorFlow model) | ❌ out of scope (ships `DnIRB_v2_2_thermal_sigma25_depth5.pb`, no portable equivalent) |
 | Product calibration | ❌ factory tool, not ported |

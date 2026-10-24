@@ -1,5 +1,28 @@
 ﻿# Changelog
 
+## 2.0.0
+
+Ported the entity set of the companion integration
+[`iamafreeride/home-assistant-senxor`](https://github.com/iamafreeride/home-assistant-senxor)
+into this code base, at the register level.
+
+* `WREG` is now modelled correctly as *one byte register + one byte value*; the
+  previous "16 bit address" interpretation produced the same bytes but could not
+  express value changes.
+* New `sensor.vdd` and `sensor.die_temperature`, decoded from the GFRA header
+  (`payload[160:320]`): VDD `3.3185 V`, die `36.4 °C` on the test device.
+* New register-backed controls: `number.emissivity` (`0xCA`, percent),
+  `number.temperature_offset` (`0xCB`, 0.1 K), `number.sensitivity` (`0xC2`),
+  `select.gain` (`0xB9`), `number.frame_rate_divider` (`0xB4`, 0–127).
+* New `switch.continuous_capture` (`0xB1` = 3/0) and `button.disconnect` /
+  `button.reconnect`.
+* Frame rate buttons now step the divider (`0` = maximum FPS) instead of the
+  earlier four-level model; the `frame_rate_level` select was removed.
+* Emissivity and offset are applied by the firmware, so the renderer no longer
+  applies them a second time.
+* `number.percentile` exposes the extreme-clipping fraction used when
+  *remove extreme* is enabled.
+
 ## 1.2.0
 
 * Two free probes: `number.probe_1_x/_1_y` and `number.probe_2_x/_2_y` select a

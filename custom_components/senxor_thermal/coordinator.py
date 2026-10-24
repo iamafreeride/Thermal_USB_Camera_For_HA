@@ -18,11 +18,12 @@ from .const import (
     CONF_AUTO_RANGE,
     CONF_EMISSIVITY,
     CONF_FILTER,
-    CONF_FPS_LEVEL,
+    CONF_FPS_DIVIDER,
     CONF_GAIN,
     CONF_JPEG_QUALITY,
     CONF_OFFSET,
     CONF_PALETTE,
+    CONF_PERCENTILE,
     CONF_PROBE_1_X,
     CONF_PROBE_1_Y,
     CONF_PROBE_2_X,
@@ -30,12 +31,14 @@ from .const import (
     CONF_REMOVE_EXTREME,
     CONF_SCALE_MAX,
     CONF_SCALE_MIN,
+    CONF_SENSITIVITY,
     CONF_SHOW_COLORBAR,
     CONF_SHOW_MARKERS,
+    CONF_STREAMING,
     CONF_UNIT,
     DEFAULT_EMISSIVITY,
     DEFAULT_FILTER,
-    DEFAULT_FPS_LEVEL,
+    DEFAULT_FPS_DIVIDER,
     DEFAULT_GAIN,
     DEFAULT_JPEG_QUALITY,
     DEFAULT_OFFSET,
@@ -43,19 +46,21 @@ from .const import (
     DEFAULT_PROBE_2,
     DEFAULT_SCALE_MAX,
     DEFAULT_SCALE_MIN,
+    DEFAULT_SENSITIVITY,
+    DEFAULT_STREAMING,
     DEFAULT_UNIT,
     DOMAIN,
+    FPS_DIVIDER_MAX,
+    FPS_DIVIDER_MIN,
 )
 from .palette import DEFAULT_PALETTE
 from .protocol import (
-    FPS_LEVEL_MAX,
-    FPS_LEVEL_MIN,
     FRAME_HEIGHT,
     FRAME_WIDTH,
+    GAIN_VALUES,
     SenXorConnection,
     SenXorProtocolError,
     ThermalFrame,
-    step_fps_level,
 )
 from .rendering import (
     FrameStats,
@@ -70,6 +75,7 @@ from .rendering import (
 _LOGGER = logging.getLogger(__name__)
 
 RECONNECT_COOLDOWN = 15.0
+DEFAULT_PERCENTILE = 0.001
 
 RENDER_WIDTH = FRAME_WIDTH * 8
 RENDER_HEIGHT = FRAME_HEIGHT * 8
@@ -83,16 +89,19 @@ class SenXorSettings:
     unit: str = DEFAULT_UNIT
     emissivity: float = DEFAULT_EMISSIVITY
     offset: float = DEFAULT_OFFSET
-    filtering: str = DEFAULT_FILTER
+    sensitivity: float = DEFAULT_SENSITIVITY
     gain: str = DEFAULT_GAIN
+    filtering: str = DEFAULT_FILTER
     auto_range: bool = True
     remove_extreme: bool = False
+    percentile: float = DEFAULT_PERCENTILE
     scale_min: float = DEFAULT_SCALE_MIN
     scale_max: float = DEFAULT_SCALE_MAX
     show_markers: bool = True
     show_colorbar: bool = True
     jpeg_quality: int = DEFAULT_JPEG_QUALITY
-    fps_level: int = DEFAULT_FPS_LEVEL
+    frame_rate_divider: int = DEFAULT_FPS_DIVIDER
+    streaming: bool = DEFAULT_STREAMING
     probe_1_x: int = DEFAULT_PROBE_1[0]
     probe_1_y: int = DEFAULT_PROBE_1[1]
     probe_2_x: int = DEFAULT_PROBE_2[0]
@@ -105,16 +114,19 @@ class SenXorSettings:
             unit=options.get(CONF_UNIT, DEFAULT_UNIT),
             emissivity=float(options.get(CONF_EMISSIVITY, DEFAULT_EMISSIVITY)),
             offset=float(options.get(CONF_OFFSET, DEFAULT_OFFSET)),
-            filtering=options.get(CONF_FILTER, DEFAULT_FILTER),
+            sensitivity=float(options.get(CONF_SENSITIVITY, DEFAULT_SENSITIVITY)),
             gain=str(options.get(CONF_GAIN, DEFAULT_GAIN)),
+            filtering=options.get(CONF_FILTER, DEFAULT_FILTER),
             auto_range=bool(options.get(CONF_AUTO_RANGE, True)),
             remove_extreme=bool(options.get(CONF_REMOVE_EXTREME, False)),
+            percentile=float(options.get(CONF_PERCENTILE, DEFAULT_PERCENTILE)),
             scale_min=float(options.get(CONF_SCALE_MIN, DEFAULT_SCALE_MIN)),
             scale_max=float(options.get(CONF_SCALE_MAX, DEFAULT_SCALE_MAX)),
             show_markers=bool(options.get(CONF_SHOW_MARKERS, True)),
             show_colorbar=bool(options.get(CONF_SHOW_COLORBAR, True)),
             jpeg_quality=int(options.get(CONF_JPEG_QUALITY, DEFAULT_JPEG_QUALITY)),
-            fps_level=int(options.get(CONF_FPS_LEVEL, DEFAULT_FPS_LEVEL)),
+            frame_rate_divider=int(options.get(CONF_FPS_DIVIDER, DEFAULT_FPS_DIVIDER)),
+            streaming=bool(options.get(CONF_STREAMING, DEFAULT_STREAMING)),
             probe_1_x=int(options.get(CONF_PROBE_1_X, DEFAULT_PROBE_1[0])),
             probe_1_y=int(options.get(CONF_PROBE_1_Y, DEFAULT_PROBE_1[1])),
             probe_2_x=int(options.get(CONF_PROBE_2_X, DEFAULT_PROBE_2[0])),
@@ -127,16 +139,19 @@ class SenXorSettings:
             CONF_UNIT: self.unit,
             CONF_EMISSIVITY: self.emissivity,
             CONF_OFFSET: self.offset,
-            CONF_FILTER: self.filtering,
+            CONF_SENSITIVITY: self.sensitivity,
             CONF_GAIN: self.gain,
+            CONF_FILTER: self.filtering,
             CONF_AUTO_RANGE: self.auto_range,
             CONF_REMOVE_EXTREME: self.remove_extreme,
+            CONF_PERCENTILE: self.percentile,
             CONF_SCALE_MIN: self.scale_min,
             CONF_SCALE_MAX: self.scale_max,
             CONF_SHOW_MARKERS: self.show_markers,
             CONF_SHOW_COLORBAR: self.show_colorbar,
             CONF_JPEG_QUALITY: self.jpeg_quality,
-            CONF_FPS_LEVEL: self.fps_level,
+            CONF_FPS_DIVIDER: self.frame_rate_divider,
+            CONF_STREAMING: self.streaming,
             CONF_PROBE_1_X: self.probe_1_x,
             CONF_PROBE_1_Y: self.probe_1_y,
             CONF_PROBE_2_X: self.probe_2_x,
@@ -147,8 +162,14 @@ class SenXorSettings:
     def probes(self) -> tuple[tuple[int, int], tuple[int, int]]:
         """The two user positioned probe coordinates (clamped to the frame)."""
         return (
-            (max(0, min(FRAME_WIDTH - 1, self.probe_1_x)), max(0, min(FRAME_HEIGHT - 1, self.probe_1_y))),
-            (max(0, min(FRAME_WIDTH - 1, self.probe_2_x)), max(0, min(FRAME_HEIGHT - 1, self.probe_2_y))),
+            (
+                max(0, min(FRAME_WIDTH - 1, self.probe_1_x)),
+                max(0, min(FRAME_HEIGHT - 1, self.probe_1_y)),
+            ),
+            (
+                max(0, min(FRAME_WIDTH - 1, self.probe_2_x)),
+                max(0, min(FRAME_HEIGHT - 1, self.probe_2_y)),
+            ),
         )
 
     def render_options(self) -> RenderOptions:
@@ -159,15 +180,15 @@ class SenXorSettings:
             scale_min=self.scale_min,
             scale_max=self.scale_max,
             remove_extreme=self.remove_extreme,
+            trim_percent=self.percentile * 100.0,
             filtering=self.filtering,
-            emissivity=self.emissivity,
-            offset=self.offset,
+            # Emissivity and offset are applied by the camera firmware (registers
+            # 0xCA / 0xCB), so the renderer must not apply them a second time.
+            emissivity=1.0,
+            offset=0.0,
             show_markers=self.show_markers,
             show_colorbar=self.show_colorbar,
-            probes=(
-                (self.probe_1_x, self.probe_1_y),
-                (self.probe_2_x, self.probe_2_y),
-            ),
+            probes=self.probes,
             width=RENDER_WIDTH,
             height=RENDER_HEIGHT,
             jpeg_quality=self.jpeg_quality,
@@ -183,9 +204,12 @@ class SenXorData:
     values: list[float] = field(default_factory=list, repr=False)
     frame_rate: float = 0.0
     connected: bool = False
+    streaming: bool = False
     last_error: str | None = None
     probe_1: float | None = None
     probe_2: float | None = None
+    vdd: float | None = None
+    die_temperature: float | None = None
 
     @property
     def available(self) -> bool:
@@ -194,6 +218,7 @@ class SenXorData:
 
 class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
     """Owns the TCP connection and turns frames into entity friendly data."""
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -220,17 +245,19 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         self._first_frame = asyncio.Event()
         self._next_connect_attempt = 0.0
         self._last_problem: str | None = None
-        self.streaming = True
-        self.frames_rendered = 0
 
     # -- connection --------------------------------------------------------
-    async def async_connect(self, wait_for_frame: float = 8.0, attempts: int = 2) -> None:
-        """(Re)connect, start streaming and wait for the first thermal frame.
+    @property
+    def connected(self) -> bool:
+        """True while the TCP connection to the camera is open."""
+        return self._connection.connected
 
-        The camera serves a single TCP client and keeps streaming to a peer
-        that disappeared, so a "connected but silent" socket is treated as a
-        failure and the connection is rebuilt (stop, single frame, start).
-        Raises :class:`SenXorProtocolError` when no frame can be obtained.
+    async def async_connect(self, wait_for_frame: float = 8.0, attempts: int = 2) -> None:
+        """(Re)connect, start streaming, apply settings and wait for a frame.
+
+        The camera serves a single TCP client and keeps streaming to a peer that
+        disappeared, so a "connected but silent" socket is treated as a failure
+        and the connection is rebuilt (stop, single frame, start).
         """
         async with self._connect_lock:
             problem = "camera did not stream"
@@ -245,11 +272,11 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
                     continue
 
                 await self._connection.start_stream()
-                self.streaming = True
-
                 timeout = wait_for_frame if attempt == 0 else max(4.0, wait_for_frame / 2)
                 if await self._wait_for_first_frame(timeout):
-                    await self._apply_fps_level()
+                    await self._apply_hardware_settings()
+                    if not self.settings.streaming:
+                        await self._connection.stop_stream()
                     return
 
                 if self._connection.bytes_received == 0:
@@ -261,8 +288,6 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
                     problem = "the camera sent data but no thermal frame"
                 _LOGGER.debug("No frame after %.1f s, nudging the camera", timeout)
 
-                # Nudge the firmware: a fresh stop/single/start cycle usually
-                # restarts the stream when the previous one was orphaned.
                 try:
                     await self._connection.stop_stream()
                     await asyncio.sleep(0.4)
@@ -272,7 +297,7 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
                     _LOGGER.debug("Could not nudge the camera: %r", err)
 
                 if await self._wait_for_first_frame(4.0):
-                    await self._apply_fps_level()
+                    await self._apply_hardware_settings()
                     return
 
                 await self._connection.close()
@@ -280,12 +305,17 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
 
             raise SenXorProtocolError(problem)
 
-    async def _apply_fps_level(self) -> None:
-        """Re-apply the stored frame rate level after (re)connecting."""
+    async def _apply_hardware_settings(self) -> None:
+        """Push emissivity, offset, sensitivity, gain and frame rate to the camera."""
+        connection = self._connection
         try:
-            await self._connection.set_fps_level(self.settings.fps_level)
-        except Exception as err:  # noqa: BLE001 - not fatal
-            _LOGGER.debug("Could not restore frame rate level: %r", err)
+            await connection.set_emissivity(int(round(self.settings.emissivity)))
+            await connection.set_offset(self.settings.offset)
+            await connection.set_sensitivity(self.settings.sensitivity)
+            await connection.set_gain(GAIN_VALUES.get(self.settings.gain, 1))
+            await connection.set_fps_divider(self.settings.frame_rate_divider)
+        except Exception as err:  # noqa: BLE001 - firmware may reject a field
+            _LOGGER.debug("Could not apply every camera setting: %r", err)
 
     async def _wait_for_first_frame(self, timeout: float) -> bool:
         """Wait up to ``timeout`` seconds for the reader to deliver a frame."""
@@ -305,38 +335,66 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         self._first_frame.set()
 
     # -- commands ----------------------------------------------------------
-    async def async_start_stream(self) -> None:
-        await self._connection.start_stream()
-        self.streaming = True
-        await self.async_request_refresh()
-
-    async def async_stop_stream(self) -> None:
-        await self._connection.stop_stream()
-        self.streaming = False
-        await self.async_request_refresh()
+    async def async_set_streaming(self, active: bool) -> None:
+        """Start or stop continuous capture."""
+        if active:
+            await self._connection.start_stream()
+        else:
+            await self._connection.stop_stream()
+        await self.async_update_settings(streaming=active)
 
     async def async_single_frame(self) -> None:
         await self._connection.single_frame()
         await self.async_request_refresh()
 
-    async def async_set_fps_level(self, level: int) -> None:
-        """Select the absolute frame rate level (1 fastest .. 4 slowest)."""
-        selected = max(FPS_LEVEL_MIN, min(FPS_LEVEL_MAX, int(level)))
+    async def async_set_fps_divider(self, divider: int) -> None:
+        """Select the absolute frame rate divider (0 = maximum frame rate)."""
+        selected = max(FPS_DIVIDER_MIN, min(FPS_DIVIDER_MAX, int(divider)))
         if self._connection.connected:
             try:
-                await self._connection.set_fps_level(selected)
-                self._last_problem = None
+                await self._connection.set_fps_divider(selected)
             except Exception as err:  # noqa: BLE001 - keep the UI responsive
-                _LOGGER.warning("Could not set frame rate level %s: %r", selected, err)
-        await self.async_update_settings(fps_level=selected)
+                _LOGGER.warning("Could not set frame rate divider %s: %r", selected, err)
+        await self.async_update_settings(frame_rate_divider=selected)
 
     async def async_frame_rate_up(self) -> None:
-        """One step faster (towards level 1)."""
-        await self.async_set_fps_level(step_fps_level(self.settings.fps_level, -1))
+        """One step faster (divider - 1, 0 = maximum)."""
+        await self.async_set_fps_divider(self.settings.frame_rate_divider - 1)
 
     async def async_frame_rate_down(self) -> None:
-        """One step slower (towards level 4)."""
-        await self.async_set_fps_level(step_fps_level(self.settings.fps_level, 1))
+        """One step slower (divider + 1)."""
+        await self.async_set_fps_divider(self.settings.frame_rate_divider + 1)
+
+    async def async_set_gain(self, gain: str) -> None:
+        """Write the module gain register."""
+        if gain not in GAIN_VALUES:
+            raise ValueError(f"unsupported gain {gain!r}")
+        await self._write_register("set_gain", GAIN_VALUES[gain])
+        await self.async_update_settings(gain=gain)
+
+    async def async_set_emissivity(self, percent: float) -> None:
+        """Write the target emissivity register."""
+        await self._write_register("set_emissivity", int(round(percent)))
+        await self.async_update_settings(emissivity=float(percent))
+
+    async def async_set_offset(self, offset: float) -> None:
+        """Write the temperature offset register."""
+        await self._write_register("set_offset", offset)
+        await self.async_update_settings(offset=float(offset))
+
+    async def async_set_sensitivity(self, factor: float) -> None:
+        """Write the sensitivity correction register."""
+        await self._write_register("set_sensitivity", factor)
+        await self.async_update_settings(sensitivity=float(factor))
+
+    async def _write_register(self, method: str, value: Any) -> None:
+        """Write one register, tolerating a camera that is not connected (yet)."""
+        if not self._connection.connected:
+            return
+        try:
+            await getattr(self._connection, method)(value)
+        except Exception as err:  # noqa: BLE001 - firmware may reject a field
+            _LOGGER.warning("Could not write %s=%s: %r", method, value, err)
 
     # -- settings ----------------------------------------------------------
     async def async_update_settings(self, **changes: Any) -> None:
@@ -356,6 +414,10 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         max_age = max(10.0, interval.total_seconds() * 3)
         frame = self._frame
         stale = frame is None or (time.time() - frame.received) > max_age
+
+        # A stopped stream is a deliberate state, not a failure.
+        if not self.settings.streaming and self._connection.connected:
+            return self._build_data()
 
         if stale or not self._connection.connected:
             now = time.time()
@@ -381,30 +443,20 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
 
         return self._build_data()
 
-    @property
-    def connected(self) -> bool:
-        """True while the TCP connection to the camera is open."""
-        return self._connection.connected
-
-    def probe_temperature(self, which: int) -> float | None:
-        """Calibrated temperature (Celsius) at probe 1 or probe 2."""
-        data = self.data
-        if data is None:
-            return None
-        return data.probe_1 if which == 1 else data.probe_2
-
     def _build_data(self) -> SenXorData:
         frame = self._frame
         data = SenXorData(
             frame=frame,
             connected=self._connection.connected,
+            streaming=self.settings.streaming,
             last_error=self._connection.last_error,
             frame_rate=self._compute_frame_rate(),
         )
         if frame is None:
             return data
         values = apply_filter(
-            calibrate(frame.pixels, self.settings.emissivity, self.settings.offset),
+            # The device already applied emissivity/offset/sensitivity.
+            calibrate(frame.pixels, 1.0, 0.0),
             self.settings.filtering,
         )
         data.values = values
@@ -412,6 +464,9 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         (x1, y1), (x2, y2) = self.settings.probes
         data.probe_1 = values[y1 * FRAME_WIDTH + x1]
         data.probe_2 = values[y2 * FRAME_WIDTH + x2]
+        if frame.header is not None:
+            data.vdd = frame.header.vdd
+            data.die_temperature = frame.header.die_temperature
         return data
 
     def _compute_frame_rate(self) -> float:
@@ -424,6 +479,13 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         return round((len(times) - 1) / span, 1)
 
     # -- rendering ---------------------------------------------------------
+    def probe_temperature(self, which: int) -> float | None:
+        """Calibrated temperature (Celsius) at probe 1 or probe 2."""
+        data = self.data
+        if data is None:
+            return None
+        return data.probe_1 if which == 1 else data.probe_2
+
     async def async_render(self) -> RenderedFrame | None:
         """Render the latest frame, reusing the previous result when possible."""
         frame = self._frame
@@ -435,8 +497,7 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         values = data.values if data is not None and data.values else None
         if values is None:
             values = apply_filter(
-                calibrate(frame.pixels, self.settings.emissivity, self.settings.offset),
-                self.settings.filtering,
+                calibrate(frame.pixels, 1.0, 0.0), self.settings.filtering
             )
 
         cache_key = hash(
@@ -449,10 +510,9 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
                 options.remove_extreme,
                 options.trim_percent,
                 options.filtering,
-                options.emissivity,
-                options.offset,
                 options.show_markers,
                 options.show_colorbar,
+                options.probes,
                 options.jpeg_quality,
             )
         )
@@ -461,6 +521,5 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
             return cached[2]
 
         rendered = await self.hass.async_add_executor_job(render_values, values, options)
-        self.frames_rendered += 1
         self._render_cache = (frame.sequence, cache_key, rendered)
         return rendered

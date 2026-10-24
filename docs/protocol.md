@@ -50,23 +50,44 @@ Every message in both directions is ASCII:
 
 Total on the wire: `5 + LLLL` bytes.
 
-### 3.1 `WREG` — write command register
+### 3.1 `WREG` — write one register
 
 ```
 23 30 30 30 43 57 52 45 47 42 31 30 33 30 32 44 45
 #  0  0  0  C  W  R  E  G  B  1  0  3  0  2  D  E
+      length   cmd          reg  val  checksum
 ```
 
 * length `0x000C` = 12 = 4 (`WREG`) + 8 payload bytes
-* payload = register address (4 hex chars) + checksum (4 hex chars)
+* payload = **one byte register address**, **one byte value**, 4 hex digit checksum
 * checksum = `sum(ascii of every character between '#' and the checksum) & 0xFFFF`
 
 Example: `"000CWREGB103"` → 48+48+48+67+87+82+69+71+66+49+48+51 = 734 = `0x02DE`.
 
-The device acknowledges with a 13 byte message, e.g. `#0008WREG01FD`
-(`0x01FD` is the ack code for a successful write).
+So `B1 03` means "register `0xB1` ← `0x03`", not "register 0xB103". The device
+acknowledges with a 13 byte message, e.g. `#0008WREG01FD`.
 
-`build_wreg(0xB103)` in `protocol.py` generates the bytes above exactly.
+| Register | Meaning | Values |
+| --- | --- | --- |
+| `0xB1` | frame mode | `0` stop, `1` single frame, `3` continuous |
+| `0xB4` | frame rate divider | `0` = maximum, `1…127` = `FPS_MAX / value` |
+| `0xB9` | module gain | `0` = 1.0, `1` = auto, `2` = 0.25, `3` = 0.5 |
+| `0xC2` | sensitivity correction | `value × 0.01` |
+| `0xCA` | emissivity | percent (`97` = 0.97) |
+| `0xCB` | temperature offset | signed byte, 0.1 K steps, −12.8…+12.7 K |
+
+The addresses were cross-checked against Meridian's `pysenxor-lite` field
+definitions (`senxor.regmap.fields`) and then verified on the camera:
+
+```
+offset -5.0 C     : 21.83 C   (delta -4.08)
+offset  0.0 C     : 25.17 C   (delta -0.74)
+emissivity 50 %   : 14.96 C   (delta -10.21)
+emissivity 97 %   : 25.45 C   (delta +0.28)
+divider 0         : 14.8 fps
+divider 2         :  8.3 fps
+divider 4         :  4.7 fps
+```
 
 ### 3.2 `GFRA` — one thermal frame
 
@@ -85,9 +106,23 @@ Payload layout:
 
 | Offset | Size | Content |
 | --- | --- | --- |
-| 0 | 320 | Metadata block. Mostly zero. Bytes 160..183 carry counters and two 16-bit values that follow the sensor temperature; the exact meaning is **unknown** (see §6). Not needed for imaging. |
+| 0 | 160 | reserved |
+| 160 | 160 | **header**: 80 little endian `uint16` – frame counter, VDD, die temperature, timestamp, device min/max (see below) |
 | 320 | 9920 | 4960 × `uint16` little endian, row major, 80 × 62 pixels, unit = **deci Kelvin** (`2977` → 297.7 K → 24.55 °C) |
 | 10240 | 4 | ASCII hex checksum |
+
+Header words (`payload[160:320]`, little endian `uint16`):
+
+| Word | Meaning | Conversion |
+| --- | --- | --- |
+| 0 | frame counter | increments per frame |
+| 1 | supply voltage | `raw × 0.0001` V |
+| 2 | die temperature | `raw × 0.01 − 273.15` °C |
+| 3, 4 | timestamp (low, high) | `high << 16 \| low` |
+| 5, 6 | device min / max temperature | `raw × 0.1 − 273.15` °C |
+| 7 | CRC | – |
+
+Example from a live frame: VDD `3.3185 V`, die `36.38 °C`, counter `55711`.
 
 Checksum: `(sum(payload[0:10240]) + 0x03F0) & 0xFFFF`, printed as 4 uppercase
 hex digits. `0x03F0` was determined empirically over 845 consecutive frames
@@ -101,41 +136,22 @@ is the top of the image).
 
 ## 4. Command registers
 
-| Register | Effect | Captured from |
-| --- | --- | --- |
-| `0xB103` | start continuous stream | connect, *Stream* |
-| `0xB100` | stop continuous stream | *Stop* |
-| `0xB101` | one single frame | *Single Frame* |
-| `0xB401` | frame rate level 1 (fastest, ~15.8 fps) | *FPS ↑* |
-| `0xB402` | frame rate level 2 | *FPS ↓* |
-| `0xB403` | frame rate level 3 (~6.5 fps) | *FPS ↑* |
-| `0xB404` | frame rate level 4 (slowest, ~4.3 fps) | *FPS ↓* |
-
-The frame rate control is **absolute, not relative**: the viewer writes
-`0xB400 + level` for the level it wants. Two captures of the same buttons
-produced different registers:
+See the register table in §3.1. The viewer's own sequence, captured byte for
+byte with a local TCP relay, is:
 
 ```
-#000CWREGB40102DF   "increase" from level 2 -> 1   (user capture)
-#000CWREGB40202E0   "decrease" from level 1 -> 2   (user capture)
-#000CWREGB40302E1   "increase" from level 4 -> 3   (earlier capture)
-#000CWREGB40402E2   "decrease" from level 3 -> 4   (earlier capture)
+connect      -> #000CWREGB10302DE   (0xB1 <- 3, continuous)
+"Stop"       -> #000CWREGB10002DB   (0xB1 <- 0)
+"Single"     -> #000CWREGB10102DC   (0xB1 <- 1)
+"Stream"     -> #000CWREGB10302DE   (0xB1 <- 3)
+"FPS down"   -> #000CWREGB40402E2   (0xB4 <- 4)
+"FPS up"     -> #000CWREGB40302E1   (0xB4 <- 3)
 ```
 
-Writing the same register twice has no effect, which explains the
-"saturated" behaviour seen while measuring (repeated `0xB403` stayed at
-~6.5 fps). Level 1 is the default state and the fastest stream.
-
-Sequence produced by the viewer, captured byte for byte with a local TCP relay:
-
-```
-connect      -> #000CWREGB10302DE
-"Stop"       -> #000CWREGB10002DB
-"Single"     -> #000CWREGB10102DC
-"Stream"     -> #000CWREGB10302DE
-"FPS down"   -> #000CWREGB40402E2   (level 3 -> 4)
-"FPS up"     -> #000CWREGB40302E1   (level 4 -> 3)
-```
+Two captures of the same FPS buttons produced different values (`B401`/`B402` in
+one session, `B403`/`B404` in another) because the register holds the absolute
+divider, not a direction. Writing the same value twice is a no-op, which is why
+repeated presses appeared to "saturate".
 
 An additional family of registers (`0x2000`, `0x2003`, `0x2500`, `0x2501`,
 `0x2503`, `0xD000`, `0xD002`, `0xD003`, `0xD301`) exists in the binary as

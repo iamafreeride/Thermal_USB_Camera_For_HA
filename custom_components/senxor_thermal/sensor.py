@@ -1,4 +1,4 @@
-"""Sensor platform: temperatures and stream statistics."""
+"""Sensor platform: temperatures, frame statistics and device diagnostics."""
 
 from __future__ import annotations
 
@@ -13,7 +13,11 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature
+from homeassistant.const import (
+    EntityCategory,
+    UnitOfElectricPotential,
+    UnitOfTemperature,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -82,16 +86,6 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
         value_fn=_stats_value(lambda stats: stats.center),
     ),
     SenXorSensorDescription(
-        key="frame_rate",
-        translation_key="frame_rate",
-        name="Frame rate",
-        state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement="fps",
-        icon="mdi:speedometer",
-        suggested_display_precision=1,
-        value_fn=lambda data: data.frame_rate,
-    ),
-    SenXorSensorDescription(
         key="probe_1_temperature",
         translation_key="probe_1_temperature",
         name="Probe 1 temperature",
@@ -116,16 +110,54 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
     SenXorSensorDescription(
         key="hotspot_x",
         translation_key="hotspot_x",
-        name="Hotspot X",
+        name="Hot spot X",
+        state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:axis-x-arrow",
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_stats_value(lambda stats: float(stats.max_position[0])),
     ),
     SenXorSensorDescription(
         key="hotspot_y",
         translation_key="hotspot_y",
-        name="Hotspot Y",
+        name="Hot spot Y",
+        state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:axis-y-arrow",
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_stats_value(lambda stats: float(stats.max_position[1])),
+    ),
+    SenXorSensorDescription(
+        key="die_temperature",
+        translation_key="die_temperature",
+        name="Sensor die temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        suggested_display_precision=2,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:thermometer",
+        value_fn=lambda data: None if data.die_temperature is None else round(data.die_temperature, 2),
+    ),
+    SenXorSensorDescription(
+        key="vdd",
+        translation_key="vdd",
+        name="Supply voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        suggested_display_precision=4,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:flash",
+        value_fn=lambda data: None if data.vdd is None else round(data.vdd, 4),
+    ),
+    SenXorSensorDescription(
+        key="frame_rate",
+        translation_key="frame_rate",
+        name="Frame rate",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="fps",
+        icon="mdi:speedometer",
+        suggested_display_precision=1,
+        value_fn=lambda data: data.frame_rate,
     ),
 )
 
@@ -161,3 +193,13 @@ class SenXorSensor(SenXorEntity, SensorEntity):
         if data is None:
             return None
         return self.entity_description.value_fn(data)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, int] | None:
+        """Expose the pixel coordinate behind each probe reading."""
+        key = self.entity_description.key
+        if key not in ("probe_1_temperature", "probe_2_temperature"):
+            return None
+        index = 0 if key.startswith("probe_1") else 1
+        x, y = self.coordinator.settings.probes[index]
+        return {"pixel_x": x, "pixel_y": y}

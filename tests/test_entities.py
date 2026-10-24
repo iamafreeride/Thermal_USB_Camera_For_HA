@@ -133,7 +133,7 @@ class NumberEntityTest(unittest.TestCase):
         }
 
     def test_initial_values(self) -> None:
-        self.assertAlmostEqual(self.entities["emissivity"].native_value, 0.97)
+        self.assertAlmostEqual(self.entities["emissivity"].native_value, 97.0)
         self.assertAlmostEqual(self.entities["temperature_offset"].native_value, 1.5)
 
     def test_set_value_updates_settings(self) -> None:
@@ -174,62 +174,60 @@ class FrameRateButtonTest(unittest.TestCase):
         self.coordinator, self.entry = build_coordinator()
         self.sent: list[int] = []
 
-        async def fake_set_level(level: int) -> int:
-            self.sent.append(level)
-            return level
+        async def fake_set_divider(divider: int) -> int:
+            self.sent.append(divider)
+            return divider
 
-        self.coordinator._connection.set_fps_level = fake_set_level
+        self.coordinator._connection.set_fps_divider = fake_set_divider
         self.buttons = {
             description.key: button_module.SenXorButton(self.coordinator, self.entry, description)
             for description in button_module.BUTTONS
         }
 
-    def test_increase_steps_towards_level_one(self) -> None:
-        asyncio.run(self.coordinator.async_set_fps_level(3))
-        asyncio.run(self.buttons["frame_rate_up"].async_press())
+    def test_increase_lowers_the_divider(self) -> None:
+        asyncio.run(self.coordinator.async_set_fps_divider(3))
+        asyncio.run(self.buttons["increase_frame_rate"].async_press())
         self.assertEqual(self.sent[-1], 2)
-        self.assertEqual(self.coordinator.settings.fps_level, 2)
-        self.assertEqual(self.entry.options["fps_level"], 2)
+        self.assertEqual(self.coordinator.settings.frame_rate_divider, 2)
+        self.assertEqual(self.entry.options["frame_rate_divider"], 2)
 
-    def test_decrease_steps_towards_level_four(self) -> None:
-        asyncio.run(self.coordinator.async_set_fps_level(2))
-        asyncio.run(self.buttons["frame_rate_down"].async_press())
+    def test_decrease_raises_the_divider(self) -> None:
+        asyncio.run(self.coordinator.async_set_fps_divider(2))
+        asyncio.run(self.buttons["decrease_frame_rate"].async_press())
         self.assertEqual(self.sent[-1], 3)
-        self.assertEqual(self.coordinator.settings.fps_level, 3)
+        self.assertEqual(self.coordinator.settings.frame_rate_divider, 3)
 
-    def test_levels_are_clamped(self) -> None:
-        asyncio.run(self.coordinator.async_set_fps_level(1))
-        asyncio.run(self.buttons["frame_rate_up"].async_press())
-        self.assertEqual(self.sent[-1], 1)
-        asyncio.run(self.coordinator.async_set_fps_level(4))
-        asyncio.run(self.buttons["frame_rate_down"].async_press())
-        self.assertEqual(self.sent[-1], 4)
+    def test_divider_is_clamped(self) -> None:
+        asyncio.run(self.coordinator.async_set_fps_divider(0))
+        asyncio.run(self.buttons["increase_frame_rate"].async_press())
+        self.assertEqual(self.sent[-1], 0)
+        asyncio.run(self.coordinator.async_set_fps_divider(127))
+        asyncio.run(self.buttons["decrease_frame_rate"].async_press())
+        self.assertEqual(self.sent[-1], 127)
 
 
-class FrameRateSelectTest(unittest.TestCase):
+class GainSelectTest(unittest.TestCase):
     def setUp(self) -> None:
         self.coordinator, self.entry = build_coordinator()
         self.sent: list[int] = []
 
-        async def fake_set_level(level: int) -> int:
-            self.sent.append(level)
-            return level
+        async def fake_set_gain(value: int) -> None:
+            self.sent.append(value)
 
-        self.coordinator._connection.set_fps_level = fake_set_level
+        self.coordinator._connection.set_gain = fake_set_gain
         descriptions = {d.key: d for d in select_module.SELECTS}
         self.entity = select_module.SenXorSelect(
-            self.coordinator, self.entry, descriptions["frame_rate_level"]
+            self.coordinator, self.entry, descriptions["gain"]
         )
 
     def test_options_and_default(self) -> None:
-        self.assertEqual(self.entity.options, ["1", "2", "3", "4"])
-        self.assertEqual(self.entity.current_option, "1")
+        self.assertEqual(self.entity.options, ["Auto", "1", "0.5", "0.25"])
+        self.assertEqual(self.entity.current_option, "Auto")
 
-    def test_select_option_sends_register(self) -> None:
-        asyncio.run(self.entity.async_select_option("4"))
-        self.assertEqual(self.sent[-1], 4)
-        self.assertEqual(self.coordinator.settings.fps_level, 4)
-        self.assertEqual(self.entity.current_option, "4")
+    def test_select_option_writes_register(self) -> None:
+        asyncio.run(self.entity.async_select_option("0.25"))
+        self.assertEqual(self.sent[-1], 2)  # 0=B1.0, 1=auto, 2=0.25, 3=0.5
+        self.assertEqual(self.coordinator.settings.gain, "0.25")
 
 
 class SwitchEntityTest(unittest.TestCase):
@@ -269,7 +267,7 @@ class ButtonEntityTest(unittest.TestCase):
         self.coordinator.async_single_frame = fake_single
         self.coordinator.async_connect = fake_connect
         asyncio.run(self.entities["single_frame"].async_press())
-        asyncio.run(self.entities["restart_stream"].async_press())
+        asyncio.run(self.entities["reconnect"].async_press())
         self.assertEqual(calls, ["single", "connect"])
 
 

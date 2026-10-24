@@ -1,23 +1,27 @@
-"""Select platform: palette, image temperature unit and spatial filtering."""
+"""Select platform: palette, image temperature unit, filtering and module gain."""
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import FILTER_MODES, TEMPERATURE_UNITS
-from .protocol import FPS_LEVELS
+from .const import FILTER_MODES, GAIN_MODES, TEMPERATURE_UNITS
 from .coordinator import SenXorCoordinator
 from .entity import SenXorEntity
 from .palette import PALETTE_NAMES
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def _set_option(coordinator: SenXorCoordinator, **changes: Any) -> None:
+    await coordinator.async_update_settings(**changes)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -28,9 +32,9 @@ class SenXorSelectDescription:
     name: str
     options: list[str]
     getter: Callable[[SenXorCoordinator], str]
-    setting: str
+    setter: Callable[[SenXorCoordinator, str], Awaitable[None]]
     icon: str
-    convert: Callable[[str], Any] | None = None
+    entity_category: EntityCategory | None = EntityCategory.CONFIG
 
 
 SELECTS: tuple[SenXorSelectDescription, ...] = (
@@ -39,7 +43,7 @@ SELECTS: tuple[SenXorSelectDescription, ...] = (
         name="Colour palette",
         options=PALETTE_NAMES,
         getter=lambda coord: coord.settings.palette,
-        setting="palette",
+        setter=lambda coord, value: _set_option(coord, palette=value),
         icon="mdi:palette",
     ),
     SenXorSelectDescription(
@@ -47,7 +51,7 @@ SELECTS: tuple[SenXorSelectDescription, ...] = (
         name="Image temperature unit",
         options=TEMPERATURE_UNITS,
         getter=lambda coord: coord.settings.unit,
-        setting="unit",
+        setter=lambda coord, value: _set_option(coord, unit=value),
         icon="mdi:temperature-celsius",
     ),
     SenXorSelectDescription(
@@ -55,17 +59,16 @@ SELECTS: tuple[SenXorSelectDescription, ...] = (
         name="Filtering",
         options=FILTER_MODES,
         getter=lambda coord: coord.settings.filtering,
-        setting="filtering",
+        setter=lambda coord, value: _set_option(coord, filtering=value),
         icon="mdi:blur",
     ),
     SenXorSelectDescription(
-        key="frame_rate_level",
-        name="Frame rate level",
-        options=[str(level) for level in FPS_LEVELS],
-        getter=lambda coord: str(coord.settings.fps_level),
-        setting="fps_level",
-        icon="mdi:speedometer",
-        convert=int,
+        key="gain",
+        name="Gain",
+        options=GAIN_MODES,
+        getter=lambda coord: coord.settings.gain,
+        setter=lambda coord, value: coord.async_set_gain(value),
+        icon="mdi:amplifier",
     ),
 )
 
@@ -81,7 +84,7 @@ async def async_setup_entry(
 
 
 class SenXorSelect(SenXorEntity, SelectEntity):
-    """A select backed by a coordinator setting."""
+    """A select backed by a coordinator setting or a camera register."""
 
     entity_description: SenXorSelectDescription
 
@@ -96,6 +99,7 @@ class SenXorSelect(SenXorEntity, SelectEntity):
         self._attr_translation_key = description.key
         self._attr_options = description.options
         self._attr_icon = description.icon
+        self._attr_entity_category = description.entity_category
 
     @property
     def current_option(self) -> str:
@@ -103,9 +107,4 @@ class SenXorSelect(SenXorEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Apply the selected option."""
-        description = self.entity_description
-        if description.key == "frame_rate_level":
-            await self.coordinator.async_set_fps_level(int(option))
-            return
-        value = description.convert(option) if description.convert else option
-        await self.coordinator.async_update_settings(**{description.setting: value})
+        await self.entity_description.setter(self.coordinator, option)

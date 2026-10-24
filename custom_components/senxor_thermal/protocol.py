@@ -47,6 +47,8 @@ FRAME_WIDTH: Final = 80
 FRAME_HEIGHT: Final = 62
 PIXEL_COUNT: Final = FRAME_WIDTH * FRAME_HEIGHT
 META_LEN: Final = 320
+HEADER_OFFSET: Final = 160
+HEADER_BYTES: Final = 160
 PIXEL_BYTES: Final = PIXEL_COUNT * 2
 TRAILER_LEN: Final = 4
 GFRA_PAYLOAD_LEN: Final = META_LEN + PIXEL_BYTES + TRAILER_LEN  # 10244
@@ -61,63 +63,83 @@ class SenXorProtocolError(Exception):
 
 
 # ---------------------------------------------------------------------------
-# Command registers.  Writing to a command register triggers an action.
-# These values were recovered from the viewer binary and confirmed on the wire.
+# Register map.  A ``WREG`` message carries one byte of register address and one
+# byte of value: ``#000CWREG<reg:02X><value:02X><checksum:04X>``.
+# The addresses below were cross-checked against Meridian's pysenxor-lite field
+# definitions (``senxor.regmap.fields``) and confirmed on the wire.
 # ---------------------------------------------------------------------------
-REG_STREAM_START: Final = 0xB103
-REG_STREAM_STOP: Final = 0xB100
-REG_SINGLE_FRAME: Final = 0xB101
+REG_FRAME_MODE: Final = 0xB1
+REG_FPS_DIVIDER: Final = 0xB4
+REG_MODULE_GAIN: Final = 0xB9
+REG_CORR_FACTOR: Final = 0xC2
+REG_EMISSIVITY: Final = 0xCA
+REG_OFFSET: Final = 0xCB
+REG_DEVICE_INFO: Final = 0xD0
 
-# Frame rate is selected with an *absolute level* register, not with relative
-# "faster/slower" commands: 0xB400 + level.  Level 1 is the fastest stream.
-# Captured from the viewer: decrease -> B402, increase -> B401 (level 1..2),
-# and B403 / B404 (level 3 / 4) in a later session; measured ~6.5 fps for
-# level 3 and ~4.3 fps for level 4, ~15.8 fps at level 1.
-REG_FPS_BASE: Final = 0xB400
-FPS_LEVEL_MIN: Final = 1
-FPS_LEVEL_MAX: Final = 4
-FPS_LEVELS: Final = tuple(range(FPS_LEVEL_MIN, FPS_LEVEL_MAX + 1))
+FRAME_MODE_STOP: Final = 0x00
+FRAME_MODE_SINGLE: Final = 0x01
+FRAME_MODE_CONTINUOUS: Final = 0x03
 
-# Kept for backwards compatibility with older entity descriptions.
-REG_FPS_UP: Final = REG_FPS_BASE + 1
-REG_FPS_DOWN: Final = REG_FPS_BASE + 2
+# Gain register values (0xB9): 0 = 1.0, 1 = auto, 2 = 0.25, 3 = 0.5.
+GAIN_VALUES: Final = {"1": 0, "Auto": 1, "0.25": 2, "0.5": 3}
+GAIN_DISPLAY: Final = {0: "1", 1: "Auto", 2: "0.25", 3: "0.5"}
 
-_COMMAND_NAMES: Final = {
-    REG_STREAM_START: "stream start",
-    REG_STREAM_STOP: "stream stop",
-    REG_SINGLE_FRAME: "single frame",
-    0xB401: "frame rate level 1 (fastest)",
-    0xB402: "frame rate level 2",
-    0xB403: "frame rate level 3",
-    0xB404: "frame rate level 4 (slowest)",
-}
+FPS_DIVIDER_MIN: Final = 0
+FPS_DIVIDER_MAX: Final = 127
 
 
-def fps_register(level: int) -> int:
-    """Return the command register for a frame rate ``level`` (1 = fastest)."""
-    return REG_FPS_BASE + max(FPS_LEVEL_MIN, min(FPS_LEVEL_MAX, level))
+def build_wreg(register: int, value: int = 0) -> bytes:
+    """Build a ``WREG`` frame: one byte register address, one byte value.
 
-
-def step_fps_level(level: int, delta: int) -> int:
-    """Move ``level`` by ``delta`` frames of speed, clamped to the valid range."""
-    return max(FPS_LEVEL_MIN, min(FPS_LEVEL_MAX, level + delta))
-
-
-
-def build_wreg(register: int) -> bytes:
-    """Build a ``WREG`` command frame for ``register``.
-
-    >>> build_wreg(0xB103)
+    >>> build_wreg(0xB1, 0x03)
     b'#000CWREGB10302DE'
+    >>> build_wreg(0xB1, 0x00)
+    b'#000CWREGB10002DB'
     """
-    prefix = f"{LOAD_FIELD_LEN:04X}WREG{register:04X}"
-    checksum = sum(prefix.encode("ascii")) & 0xFFFF
-    return f"#{prefix}{checksum:04X}".encode("ascii")
+    body = f"{LOAD_FIELD_LEN:04X}WREG{register & 0xFF:02X}{value & 0xFF:02X}"
+    checksum = sum(body.encode("ascii")) & 0xFFFF
+    return f"#{body}{checksum:04X}".encode("ascii")
 
 
-def command_name(register: int) -> str:
-    """Human readable name for a command register."""
-    return _COMMAND_NAMES.get(register, f"register 0x{register:04X}")
+def command_name(register: int, value: int | None = None) -> str:
+    """Human readable name for a register write."""
+    if register == REG_FRAME_MODE:
+        return {
+            FRAME_MODE_STOP: "stop stream",
+            FRAME_MODE_SINGLE: "single frame",
+            FRAME_MODE_CONTINUOUS: "start stream",
+        }.get(value if value is not None else -1, "frame mode")
+    if register == REG_FPS_DIVIDER:
+        return "frame rate divider"
+    if register == REG_MODULE_GAIN:
+        return "module gain"
+    if register == REG_CORR_FACTOR:
+        return "sensitivity correction"
+    if register == REG_EMISSIVITY:
+        return "emissivity"
+    if register == REG_OFFSET:
+        return "temperature offset"
+    return f"register 0x{register:02X}"
+
+
+@dataclass(slots=True)
+class FrameHeader:
+    """Decoded MI08 GFRA header (payload bytes 160..319, 80 uint16 words)."""
+
+    frame_counter: int
+    vdd: float
+    die_temperature: float
+    timestamp: int
+    max_temperature: float
+    min_temperature: float
+
+    def as_dict(self) -> dict[str, float | int]:
+        return {
+            "frame_counter": self.frame_counter,
+            "vdd": round(self.vdd, 4),
+            "die_temperature": round(self.die_temperature, 2),
+            "timestamp": self.timestamp,
+        }
 
 
 @dataclass(slots=True)
@@ -129,6 +151,7 @@ class ThermalFrame:
     meta: bytes
     pixels: tuple[int, ...]  # deci Kelvin, row major, 80 x 62
     checksum_ok: bool
+    header: FrameHeader | None = None
 
     @property
     def min_dk(self) -> int:
@@ -148,6 +171,25 @@ class CommandAck:
 
     payload: bytes
     received: float = field(default_factory=time.time)
+
+
+def decode_header(meta: bytes) -> FrameHeader | None:
+    """Decode the MI08 header block.
+
+    Layout (little endian uint16): 0 frame counter, 1 VDD (x 1e-4 V),
+    2 die temperature (x 0.01 K), 3/4 timestamp, 5/6 max/min (x 0.1 K).
+    """
+    if len(meta) < HEADER_OFFSET + HEADER_BYTES:
+        return None
+    words = memoryview(meta)[HEADER_OFFSET : HEADER_OFFSET + HEADER_BYTES].cast("H")
+    return FrameHeader(
+        frame_counter=words[0],
+        vdd=words[1] * 0.0001,
+        die_temperature=words[2] * 0.01 - 273.15,
+        timestamp=(words[4] << 16) | words[3],
+        max_temperature=words[5] * 0.1 - 273.15,
+        min_temperature=words[6] * 0.1 - 273.15,
+    )
 
 
 def parse_messages(buffer: bytes) -> tuple[list[tuple[str, bytes]], bytes]:
@@ -188,12 +230,14 @@ def decode_frame(payload: bytes, sequence: int) -> ThermalFrame:
     except ValueError:
         expected = -1
     checksum_ok = expected == (sum(payload[:-TRAILER_LEN]) + FRAME_CHECKSUM_SEED) & 0xFFFF
+    meta = payload[:META_LEN]
     return ThermalFrame(
         sequence=sequence,
         received=time.time(),
-        meta=payload[:META_LEN],
+        meta=meta,
         pixels=pixels,
         checksum_ok=checksum_ok,
+        header=decode_header(meta),
     )
 
 
@@ -260,34 +304,47 @@ class SenXorConnection:
                 pass
 
     # -- commands ----------------------------------------------------------
-    async def send_command(self, register: int) -> None:
-        """Send a command register write."""
+    async def send_command(self, register: int, value: int = 0) -> None:
+        """Send a register write."""
         if self._writer is None:
             raise SenXorProtocolError("not connected")
-        self._writer.write(build_wreg(register))
+        self._writer.write(build_wreg(register, value))
         await self._writer.drain()
-        _LOGGER.debug("Sent %s (0x%04X)", command_name(register), register)
+        _LOGGER.debug(
+            "Sent %s (0x%02X <- 0x%02X)", command_name(register, value), register, value
+        )
 
     async def start_stream(self) -> None:
-        await self.send_command(REG_STREAM_START)
+        await self.send_command(REG_FRAME_MODE, FRAME_MODE_CONTINUOUS)
 
     async def stop_stream(self) -> None:
-        await self.send_command(REG_STREAM_STOP)
+        await self.send_command(REG_FRAME_MODE, FRAME_MODE_STOP)
 
     async def single_frame(self) -> None:
-        await self.send_command(REG_SINGLE_FRAME)
+        await self.send_command(REG_FRAME_MODE, FRAME_MODE_SINGLE)
 
-    async def set_fps_level(self, level: int) -> int:
-        """Select an absolute frame rate level (1 fastest .. 4 slowest)."""
-        selected = max(FPS_LEVEL_MIN, min(FPS_LEVEL_MAX, level))
-        await self.send_command(fps_register(selected))
-        return selected
+    async def set_fps_divider(self, divider: int) -> int:
+        """Select the frame rate divider (0 = maximum frame rate)."""
+        value = max(FPS_DIVIDER_MIN, min(FPS_DIVIDER_MAX, int(divider)))
+        await self.send_command(REG_FPS_DIVIDER, value)
+        return value
 
-    async def frame_rate_up(self) -> None:
-        await self.send_command(REG_FPS_UP)
+    async def set_gain(self, gain_value: int) -> None:
+        """Write the module gain register (0 = 1.0, 1 = auto, 2 = 0.25, 3 = 0.5)."""
+        await self.send_command(REG_MODULE_GAIN, gain_value)
 
-    async def frame_rate_down(self) -> None:
-        await self.send_command(REG_FPS_DOWN)
+    async def set_sensitivity(self, factor: float) -> None:
+        """Write the sensitivity correction factor (0.01 .. 2.55)."""
+        await self.send_command(REG_CORR_FACTOR, int(round(factor * 100)) & 0xFF)
+
+    async def set_emissivity(self, percent: int) -> None:
+        """Write the target emissivity register (percent, 1..100)."""
+        await self.send_command(REG_EMISSIVITY, max(1, min(100, int(percent))))
+
+    async def set_offset(self, offset: float) -> None:
+        """Write the temperature offset register (0.1 K units, signed byte)."""
+        raw = int(round(offset * 10)) & 0xFF
+        await self.send_command(REG_OFFSET, raw)
 
     # -- reader ------------------------------------------------------------
     async def _read_loop(self) -> None:

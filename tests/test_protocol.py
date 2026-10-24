@@ -1,4 +1,4 @@
-"""Protocol level tests for the SenXor framing and frame decoding."""
+"""Protocol level tests for the SenXor framing, registers and frame decoding."""
 
 from __future__ import annotations
 
@@ -8,57 +8,48 @@ from common import load, sample_frames
 
 protocol = load("protocol")
 
-CAPTURED_COMMANDS = {
-    "B103": b"#000CWREGB10302DE",
-    "B100": b"#000CWREGB10002DB",
-    "B101": b"#000CWREGB10102DC",
-    "B401": b"#000CWREGB40102DF",  # frame rate level 1 (faster), captured by the user
-    "B402": b"#000CWREGB40202E0",  # frame rate level 2 (slower)
-    "B404": b"#000CWREGB40402E2",
-    "B403": b"#000CWREGB40302E1",
-}
+# (register, value, bytes captured on the wire)
+CAPTURED_COMMANDS = (
+    (0xB1, 0x03, b"#000CWREGB10302DE"),  # start continuous capture
+    (0xB1, 0x00, b"#000CWREGB10002DB"),  # stop
+    (0xB1, 0x01, b"#000CWREGB10102DC"),  # single frame
+    (0xB4, 0x04, b"#000CWREGB40402E2"),  # divider 4
+    (0xB4, 0x03, b"#000CWREGB40302E1"),  # divider 3
+    (0xB4, 0x02, b"#000CWREGB40202E0"),  # divider 2 (captured by the user)
+    (0xB4, 0x01, b"#000CWREGB40102DF"),  # divider 1 (captured by the user)
+    (0xB4, 0x00, b"#000CWREGB40002DE"),  # divider 0 = maximum frame rate
+)
 
 
 class BuildCommandTest(unittest.TestCase):
     def test_generated_commands_match_captured_bytes(self) -> None:
-        for register, expected in CAPTURED_COMMANDS.items():
-            with self.subTest(register=register):
-                self.assertEqual(protocol.build_wreg(int(register, 16)), expected)
+        for register, value, expected in CAPTURED_COMMANDS:
+            with self.subTest(register=register, value=value):
+                self.assertEqual(protocol.build_wreg(register, value), expected)
 
     def test_checksum_is_sum_of_characters(self) -> None:
-        command = protocol.build_wreg(0xB103)
+        command = protocol.build_wreg(0xB1, 0x03)
         body, checksum = command[1:-4], int(command[-4:], 16)
         self.assertEqual(checksum, sum(body))
         self.assertEqual(len(command), 17)
 
     def test_command_names(self) -> None:
-        self.assertEqual(protocol.command_name(0xB103), "stream start")
-        self.assertEqual(protocol.command_name(0x1234), "register 0x1234")
+        self.assertEqual(protocol.command_name(0xB1, 0x03), "start stream")
+        self.assertEqual(protocol.command_name(0xB1, 0x00), "stop stream")
+        self.assertEqual(protocol.command_name(0xB1, 0x01), "single frame")
+        self.assertEqual(protocol.command_name(0xB4, 3), "frame rate divider")
+        self.assertEqual(protocol.command_name(0xC2, 95), "sensitivity correction")
+        self.assertEqual(protocol.command_name(0xEE, 1), "register 0xEE")
 
 
-class FrameRateLevelTest(unittest.TestCase):
-    def test_levels_map_to_registers(self) -> None:
-        self.assertEqual(protocol.fps_register(1), 0xB401)
-        self.assertEqual(protocol.fps_register(2), 0xB402)
-        self.assertEqual(protocol.fps_register(3), 0xB403)
-        self.assertEqual(protocol.fps_register(4), 0xB404)
+class RegisterLimitsTest(unittest.TestCase):
+    def test_divider_range(self) -> None:
+        self.assertEqual(protocol.FPS_DIVIDER_MIN, 0)
+        self.assertEqual(protocol.FPS_DIVIDER_MAX, 127)
 
-    def test_levels_are_clamped(self) -> None:
-        self.assertEqual(protocol.fps_register(0), 0xB401)
-        self.assertEqual(protocol.fps_register(9), 0xB404)
-
-    def test_stepping(self) -> None:
-        self.assertEqual(protocol.step_fps_level(3, -1), 2)  # faster
-        self.assertEqual(protocol.step_fps_level(3, 1), 4)   # slower
-        self.assertEqual(protocol.step_fps_level(1, -1), 1)  # clamped at fastest
-        self.assertEqual(protocol.step_fps_level(4, 1), 4)   # clamped at slowest
-
-    def test_level_commands_match_captured_packets(self) -> None:
-        self.assertEqual(protocol.build_wreg(protocol.fps_register(1)), b"#000CWREGB40102DF")
-        self.assertEqual(protocol.build_wreg(protocol.fps_register(2)), b"#000CWREGB40202E0")
-
-    def test_command_names(self) -> None:
-        self.assertEqual(protocol.command_name(0xB401), "frame rate level 1 (fastest)")
+    def test_gain_values(self) -> None:
+        self.assertEqual(protocol.GAIN_VALUES, {"1": 0, "Auto": 1, "0.25": 2, "0.5": 3})
+        self.assertEqual(protocol.GAIN_DISPLAY[1], "Auto")
 
 
 class MessageParsingTest(unittest.TestCase):
@@ -128,13 +119,42 @@ class FrameDecodingTest(unittest.TestCase):
         self.assertFalse(frame.checksum_ok)
 
 
-class FrameMetadataTest(unittest.TestCase):
-    def test_metadata_block_is_preserved(self) -> None:
+class HeaderDecodingTest(unittest.TestCase):
+    def setUp(self) -> None:
         messages, _ = protocol.parse_messages(sample_frames())
-        payload = messages[0][1]
-        frame = protocol.decode_frame(payload, 0)
-        self.assertEqual(len(frame.meta), protocol.META_LEN)
-        self.assertEqual(frame.meta, payload[: protocol.META_LEN])
+        self.payloads = [payload for _, payload in messages]
+
+    def test_header_fields_are_decoded(self) -> None:
+        frame = protocol.decode_frame(self.payloads[0], 0)
+        header = frame.header
+        self.assertIsNotNone(header)
+        assert header is not None
+        self.assertGreater(header.vdd, 2.5)
+        self.assertLess(header.vdd, 5.5)
+        self.assertGreater(header.die_temperature, -40.0)
+        self.assertLess(header.die_temperature, 125.0)
+
+    def test_frame_counter_increments(self) -> None:
+        counters = [
+            protocol.decode_frame(payload, index).header.frame_counter
+            for index, payload in enumerate(self.payloads)
+        ]
+        self.assertEqual(counters, list(range(counters[0], counters[0] + len(counters))))
+
+    def test_decode_header_directly(self) -> None:
+        payload = self.payloads[0]
+        header = protocol.decode_header(payload[: protocol.META_LEN])
+        self.assertIsNotNone(header)
+        assert header is not None
+        self.assertAlmostEqual(header.vdd, int.from_bytes(payload[162:164], "little") * 0.0001, places=6)
+        self.assertAlmostEqual(
+            header.die_temperature,
+            int.from_bytes(payload[164:166], "little") * 0.01 - 273.15,
+            places=6,
+        )
+
+    def test_short_metadata_is_tolerated(self) -> None:
+        self.assertIsNone(protocol.decode_header(b"\x00" * 100))
 
 
 if __name__ == "__main__":

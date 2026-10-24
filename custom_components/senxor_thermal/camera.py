@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     ATTR_CENTER_TEMPERATURE,
+    ATTR_DIE_TEMPERATURE,
     ATTR_FRAME_RATE,
     ATTR_FRAME_SEQUENCE,
     ATTR_MAX_TEMPERATURE,
@@ -22,6 +23,7 @@ from .const import (
     ATTR_PROBE_2_TEMPERATURE,
     ATTR_RAW_MAX,
     ATTR_RAW_MIN,
+    ATTR_VDD,
     DOMAIN,
     MANUFACTURER,
     MODEL,
@@ -102,8 +104,13 @@ class SenXorThermalCamera(CoordinatorEntity[SenXorCoordinator], Camera):
         attributes["frame_size"] = f"{FRAME_WIDTH}x{FRAME_HEIGHT}"
         attributes["temperature_unit"] = unit
         attributes["palette"] = self.coordinator.settings.palette
-        attributes["streaming"] = self.coordinator.streaming
-        attributes["frame_rate_level"] = self.coordinator.settings.fps_level
+        attributes["streaming"] = self.coordinator.settings.streaming
+        attributes["frame_rate_divider"] = self.coordinator.settings.frame_rate_divider
+        attributes["gain"] = self.coordinator.settings.gain
+        if data.vdd is not None:
+            attributes[ATTR_VDD] = round(data.vdd, 4)
+        if data.die_temperature is not None:
+            attributes[ATTR_DIE_TEMPERATURE] = round(data.die_temperature, 2)
         probe_1 = self.coordinator.probe_temperature(1)
         probe_2 = self.coordinator.probe_temperature(2)
         if probe_1 is not None:

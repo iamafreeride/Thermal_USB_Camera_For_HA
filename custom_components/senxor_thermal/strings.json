@@ -43,20 +43,26 @@
       "center_temperature": {
         "name": "Centre temperature"
       },
-      "frame_rate": {
-        "name": "Frame rate"
-      },
-      "hotspot_x": {
-        "name": "Hotspot X"
-      },
-      "hotspot_y": {
-        "name": "Hotspot Y"
-      },
       "probe_1_temperature": {
         "name": "Probe 1 temperature"
       },
       "probe_2_temperature": {
         "name": "Probe 2 temperature"
+      },
+      "hotspot_x": {
+        "name": "Hot spot X"
+      },
+      "hotspot_y": {
+        "name": "Hot spot Y"
+      },
+      "die_temperature": {
+        "name": "Sensor die temperature"
+      },
+      "vdd": {
+        "name": "Supply voltage"
+      },
+      "frame_rate": {
+        "name": "Frame rate"
       }
     },
     "number": {
@@ -65,6 +71,15 @@
       },
       "temperature_offset": {
         "name": "Temperature offset"
+      },
+      "sensitivity": {
+        "name": "Sensitivity correction"
+      },
+      "frame_rate_divider": {
+        "name": "Frame rate divider"
+      },
+      "percentile": {
+        "name": "Extreme clipping percentile"
       },
       "scale_minimum": {
         "name": "Scale minimum"
@@ -95,17 +110,14 @@
       "filtering": {
         "name": "Filtering"
       },
-      "frame_rate_level": {
-        "name": "Frame rate level",
-        "state": {
-          "1": "1 - fastest",
-          "2": "2 - fast",
-          "3": "3 - slow",
-          "4": "4 - slowest"
-        }
+      "gain": {
+        "name": "Gain"
       }
     },
     "switch": {
+      "streaming": {
+        "name": "Continuous capture"
+      },
       "auto_range": {
         "name": "Automatic temperature range"
       },
@@ -123,13 +135,16 @@
       "single_frame": {
         "name": "Single frame"
       },
-      "restart_stream": {
-        "name": "Restart stream"
+      "reconnect": {
+        "name": "Reconnect"
       },
-      "frame_rate_up": {
+      "disconnect": {
+        "name": "Disconnect"
+      },
+      "increase_frame_rate": {
         "name": "Increase frame rate"
       },
-      "frame_rate_down": {
+      "decrease_frame_rate": {
         "name": "Decrease frame rate"
       }
     }
