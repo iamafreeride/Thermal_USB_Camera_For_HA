@@ -264,8 +264,8 @@ class ButtonEntityTest(unittest.TestCase):
         async def fake_connect():
             calls.append("connect")
 
-        self.coordinator.async_shutdown = fake_disconnect
-        self.coordinator.async_connect = fake_connect
+        self.coordinator.async_disconnect = fake_disconnect
+        self.coordinator.async_reconnect = fake_connect
         asyncio.run(self.entities["disconnect"].async_press())
         asyncio.run(self.entities["reconnect"].async_press())
         self.assertEqual(calls, ["disconnect", "connect"])

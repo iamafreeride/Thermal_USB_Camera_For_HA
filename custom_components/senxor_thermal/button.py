@@ -32,7 +32,7 @@ BUTTONS: tuple[SenXorButtonDescription, ...] = (
         translation_key="reconnect",
         name="重新連線",
         icon="mdi:lan-connect",
-        action=lambda coord: coord.async_connect(),
+        action=lambda coord: coord.async_reconnect(),
         needs_connection=False,
     ),
     SenXorButtonDescription(
@@ -40,7 +40,7 @@ BUTTONS: tuple[SenXorButtonDescription, ...] = (
         translation_key="disconnect",
         name="中斷連線",
         icon="mdi:lan-disconnect",
-        action=lambda coord: coord.async_shutdown(),
+        action=lambda coord: coord.async_disconnect(),
         needs_connection=False,
     ),
     SenXorButtonDescription(

@@ -335,13 +335,49 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         self._first_frame.set()
 
     # -- commands ----------------------------------------------------------
+    async def async_disconnect(self) -> None:
+        """User requested disconnect: close the socket and stop reconnecting.
+
+        The coordinator polls every update interval; without recording the
+        intent it would simply reconnect on the next tick (which made the
+        disconnect button look broken).
+        """
+        await self.async_update_settings(streaming=False)
+        await self._connection.close()
+        self._frame = None
+        self._first_frame.clear()
+        self.async_set_updated_data(self._build_data())
+        _LOGGER.info("SenXor camera disconnected on request")
+
+    async def async_reconnect(self) -> None:
+        """User requested reconnect: restore the intent, connect and stream."""
+        await self.async_update_settings(streaming=True)
+        await self.async_connect()
+        self.async_set_updated_data(self._build_data())
+        _LOGGER.info("SenXor camera reconnected on request")
+
     async def async_set_streaming(self, active: bool) -> None:
-        """Start or stop continuous capture."""
-        if active:
-            await self._connection.start_stream()
+        """Start or stop continuous capture (reconnecting when needed)."""
+        if not active:
+            await self.async_update_settings(streaming=False)
+            if self._connection.connected:
+                try:
+                    await self._connection.stop_stream()
+                except Exception as err:  # noqa: BLE001 - keep the UI responsive
+                    _LOGGER.debug("Could not stop the stream: %r", err)
+            self.async_set_updated_data(self._build_data())
+            return
+
+        await self.async_update_settings(streaming=True)
+        if not self._connection.connected:
+            await self.async_connect()
         else:
-            await self._connection.stop_stream()
-        await self.async_update_settings(streaming=active)
+            try:
+                await self._connection.start_stream()
+            except Exception as err:  # noqa: BLE001 - reconnecting below
+                _LOGGER.debug("Could not restart the stream (%r), reconnecting", err)
+                await self.async_connect()
+        self.async_set_updated_data(self._build_data())
 
     async def async_single_frame(self) -> None:
         await self._connection.single_frame()
@@ -415,8 +451,9 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         frame = self._frame
         stale = frame is None or (time.time() - frame.received) > max_age
 
-        # A stopped stream is a deliberate state, not a failure.
-        if not self.settings.streaming and self._connection.connected:
+        # A stopped stream / manual disconnect is a deliberate state: do not
+        # reconnect and do not report a failure.
+        if not self.settings.streaming:
             return self._build_data()
 
         if stale or not self._connection.connected:

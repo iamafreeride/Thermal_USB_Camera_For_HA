@@ -1,5 +1,19 @@
 ﻿# Changelog
 
+## 2.3.1
+
+* **中斷連線** now really disconnects: it closes the socket, clears the last
+  frame (the camera entity becomes unavailable) and records `streaming = false`
+  so the polling loop stops reconnecting.  Previously the coordinator
+  reconnected on the next tick, so the button appeared to do nothing.
+* **重新連線** restores the intent (`streaming = true`), reconnects, waits for a
+  frame and republishes the state, so the entities come back without waiting for
+  the retry timer.
+* `switch.連續擷取` uses the same paths: turning it off stops the stream and
+  suppresses automatic reconnects, turning it on reconnects when needed.
+* Added three regression tests covering disconnect, reconnect and the streaming
+  switch (`tests/test_connection.py`).
+
 ## 2.3.0
 
 Fixes **every button, number, select and switch failing to be added**:
