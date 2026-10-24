@@ -193,6 +193,8 @@ class SenXorConnection:
         self._buffer = b""
         self.connected = False
         self.last_error: str | None = None
+        self.bytes_received = 0
+        self.last_rx = 0.0
 
     # -- lifecycle ---------------------------------------------------------
     async def connect(self, timeout: float = 5.0) -> None:
@@ -207,6 +209,8 @@ class SenXorConnection:
         self._buffer = b""
         self.connected = True
         self.last_error = None
+        self.bytes_received = 0
+        self.last_rx = 0.0
         self._task = asyncio.create_task(self._read_loop(), name="senxor-reader")
         _LOGGER.debug("Connected to SenXor camera at %s:%s", self.host, self.port)
 
@@ -266,6 +270,8 @@ class SenXorConnection:
                     self.last_error = "connection closed by device"
                     _LOGGER.warning("SenXor camera closed the connection")
                     return
+                self.bytes_received += len(chunk)
+                self.last_rx = time.time()
                 self._buffer += chunk
                 messages, self._buffer = parse_messages(self._buffer)
                 for command, payload in messages:
@@ -296,11 +302,13 @@ class SenXorConnection:
             _LOGGER.debug("SenXor reader stopped: %r", err)
 
 
-async def async_probe(host: str, port: int, timeout: float = 8.0) -> ThermalFrame:
+async def async_probe(host: str, port: int, timeout: float = 10.0) -> ThermalFrame:
     """Connect to ``host:port``, request streaming and return the first frame.
 
-    Raises :class:`SenXorProtocolError` when no valid frame arrives in time.
-    Used by the config flow to validate user input.
+    The stream is stopped again before the socket is closed so the camera is
+    released cleanly for the next client.  Raises
+    :class:`SenXorProtocolError` when no valid frame arrives in time.  Used by
+    the config flow to validate user input.
     """
     reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout)
     try:
@@ -320,6 +328,12 @@ async def async_probe(host: str, port: int, timeout: float = 8.0) -> ThermalFram
                     return decode_frame(payload, 0)
         raise SenXorProtocolError("no thermal frame received")
     finally:
+        try:
+            writer.write(build_wreg(REG_STREAM_STOP))
+            await writer.drain()
+            await asyncio.sleep(0.1)
+        except Exception:  # noqa: BLE001 - device may already be gone
+            pass
         writer.close()
         try:
             await writer.wait_closed()

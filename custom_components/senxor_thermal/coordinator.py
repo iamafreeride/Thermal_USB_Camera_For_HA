@@ -39,7 +39,13 @@ from .const import (
     DOMAIN,
 )
 from .palette import DEFAULT_PALETTE
-from .protocol import FRAME_HEIGHT, FRAME_WIDTH, SenXorConnection, ThermalFrame
+from .protocol import (
+    FRAME_HEIGHT,
+    FRAME_WIDTH,
+    SenXorConnection,
+    SenXorProtocolError,
+    ThermalFrame,
+)
 from .rendering import (
     FrameStats,
     RenderOptions,
@@ -51,6 +57,8 @@ from .rendering import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+RECONNECT_COOLDOWN = 15.0
 
 RENDER_WIDTH = FRAME_WIDTH * 8
 RENDER_HEIGHT = FRAME_HEIGHT * 8
@@ -170,21 +178,73 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         self._connect_lock = asyncio.Lock()
         self._render_cache: tuple[int, int, RenderedFrame] | None = None
         self._first_frame = asyncio.Event()
+        self._next_connect_attempt = 0.0
+        self._last_problem: str | None = None
         self.streaming = True
         self.frames_rendered = 0
 
     # -- connection --------------------------------------------------------
-    async def async_connect(self, wait_for_frame: float = 8.0) -> None:
-        """(Re)connect to the camera, start streaming and wait for one frame."""
+    async def async_connect(self, wait_for_frame: float = 8.0, attempts: int = 2) -> None:
+        """(Re)connect, start streaming and wait for the first thermal frame.
+
+        The camera serves a single TCP client and keeps streaming to a peer
+        that disappeared, so a "connected but silent" socket is treated as a
+        failure and the connection is rebuilt (stop, single frame, start).
+        Raises :class:`SenXorProtocolError` when no frame can be obtained.
+        """
         async with self._connect_lock:
-            self._first_frame.clear()
-            await self._connection.connect()
-            await self._connection.start_stream()
-            self.streaming = True
-            try:
-                await asyncio.wait_for(self._first_frame.wait(), timeout=wait_for_frame)
-            except TimeoutError:
-                _LOGGER.debug("No frame within %.1f s of connecting", wait_for_frame)
+            problem = "camera did not stream"
+            for attempt in range(attempts):
+                self._first_frame.clear()
+                try:
+                    await self._connection.connect()
+                except Exception as err:  # noqa: BLE001 - network errors are expected
+                    problem = f"cannot connect to {self.host}:{self.port}: {err}"
+                    _LOGGER.debug("Connection attempt %s failed: %s", attempt + 1, problem)
+                    await asyncio.sleep(0.5)
+                    continue
+
+                await self._connection.start_stream()
+                self.streaming = True
+
+                timeout = wait_for_frame if attempt == 0 else max(4.0, wait_for_frame / 2)
+                if await self._wait_for_first_frame(timeout):
+                    return
+
+                if self._connection.bytes_received == 0:
+                    problem = (
+                        f"connected to {self.host}:{self.port} but the camera sent no data - "
+                        "another client (e.g. the Windows SenXor viewer) may still hold the stream"
+                    )
+                else:
+                    problem = "the camera sent data but no thermal frame"
+                _LOGGER.debug("No frame after %.1f s, nudging the camera", timeout)
+
+                # Nudge the firmware: a fresh stop/single/start cycle usually
+                # restarts the stream when the previous one was orphaned.
+                try:
+                    await self._connection.stop_stream()
+                    await asyncio.sleep(0.4)
+                    await self._connection.single_frame()
+                    await self._connection.start_stream()
+                except Exception as err:  # noqa: BLE001 - best effort
+                    _LOGGER.debug("Could not nudge the camera: %r", err)
+
+                if await self._wait_for_first_frame(4.0):
+                    return
+
+                await self._connection.close()
+                await asyncio.sleep(0.5)
+
+            raise SenXorProtocolError(problem)
+
+    async def _wait_for_first_frame(self, timeout: float) -> bool:
+        """Wait up to ``timeout`` seconds for the reader to deliver a frame."""
+        try:
+            await asyncio.wait_for(self._first_frame.wait(), timeout=timeout)
+            return True
+        except TimeoutError:
+            return False
 
     async def async_shutdown(self) -> None:
         """Close the connection."""
@@ -230,19 +290,32 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
 
     # -- coordinator -------------------------------------------------------
     async def _async_update_data(self) -> SenXorData:
-        if not self._connection.connected:
+        interval = self.update_interval or timedelta(seconds=10)
+        max_age = max(10.0, interval.total_seconds() * 3)
+        frame = self._frame
+        stale = frame is None or (time.time() - frame.received) > max_age
+
+        if stale or not self._connection.connected:
+            now = time.time()
+            if now < self._next_connect_attempt:
+                raise UpdateFailed(self._last_problem or "camera unavailable")
+
+            if self._connection.connected:
+                _LOGGER.debug("Thermal frames are stale, reconnecting")
             try:
                 await self.async_connect()
-            except Exception as err:  # noqa: BLE001 - network errors are expected
-                raise UpdateFailed(f"cannot connect to {self.host}:{self.port}: {err}") from err
+            except Exception as err:  # noqa: BLE001 - surfaced as ConfigEntryNotReady
+                self._last_problem = str(err)
+                self._next_connect_attempt = time.time() + RECONNECT_COOLDOWN
+                _LOGGER.warning("SenXor camera unavailable: %s", err)
+                raise UpdateFailed(str(err)) from err
 
-        frame = self._frame
-        if frame is None:
-            raise UpdateFailed("waiting for the first frame")
-
-        interval = self.update_interval or timedelta(seconds=10)
-        if time.time() - frame.received > max(10.0, interval.total_seconds() * 5):
-            raise UpdateFailed("no frames received recently")
+            if self._last_problem is not None:
+                _LOGGER.info("SenXor camera is streaming again")
+                self._last_problem = None
+            frame = self._frame
+            if frame is None:
+                raise UpdateFailed("camera did not deliver a frame")
 
         return self._build_data()
 
