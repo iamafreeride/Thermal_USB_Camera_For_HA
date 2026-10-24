@@ -54,12 +54,6 @@
       "probe_2_temperature": {
         "name": "温度2"
       },
-      "hotspot_x": {
-        "name": "热点 X"
-      },
-      "hotspot_y": {
-        "name": "热点 Y"
-      },
       "die_temperature": {
         "name": "芯片温度"
       },

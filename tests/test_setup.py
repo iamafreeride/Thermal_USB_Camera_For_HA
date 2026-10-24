@@ -125,7 +125,7 @@ class SetupTest(unittest.TestCase):
             self.assertIsNotNone(values["vdd"])
             self.assertIsNotNone(values["die_temperature"])
             self.assertIsNotNone(values["probe_1_temperature"])
-            self.assertIsNotNone(values["hotspot_x"])
+            self.assertIsNotNone(values["frame_rate"])
 
             numbers: list = []
             await number.async_setup_entry(

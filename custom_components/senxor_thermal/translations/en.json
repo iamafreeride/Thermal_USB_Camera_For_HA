@@ -49,12 +49,6 @@
       "probe_2_temperature": {
         "name": "Temperature 2"
       },
-      "hotspot_x": {
-        "name": "Hot spot X"
-      },
-      "hotspot_y": {
-        "name": "Hot spot Y"
-      },
       "die_temperature": {
         "name": "Sensor die temperature"
       },

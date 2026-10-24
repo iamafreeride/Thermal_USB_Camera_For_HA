@@ -68,10 +68,9 @@ Home Assistant's slugify() drops CJK characters.
 | `sensor.thermal_camera_centre_temperature` | 中心溫 | Pixel under the crosshair |
 | `sensor.thermal_camera_temperature_1` | 溫度1 | Temperature at (X1, Y1) |
 | `sensor.thermal_camera_temperature_2` | 溫度2 | Temperature at (X2, Y2) |
-| `sensor.thermal_camera_hotspot_x` / `_y` | 熱點 X / 熱點 Y | Coordinates of the hottest pixel |
 | `sensor.thermal_camera_die_temperature` | 晶片溫度 | Sensor die temperature (GFRA header) |
 | `sensor.thermal_camera_vdd` | 供應電壓 | Sensor supply voltage (GFRA header) |
-| `sensor.thermal_camera_frame_rate` | 影格率 | Measured frame rate |
+| `sensor.thermal_camera_frame_rate` | 影格率 | Measured frame rate (diagnostic) |
 | `number.thermal_camera_x1` | X1 | Probe 1 X (0–79) |
 | `number.thermal_camera_y1` | Y1 | Probe 1 Y (0–61) |
 | `number.thermal_camera_x2` | X2 | Probe 2 X (0–79) |

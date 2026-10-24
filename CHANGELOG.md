@@ -1,5 +1,16 @@
 ﻿# Changelog
 
+## 2.4.0
+
+* Removed `sensor.thermal_camera_hotspot_x` / `_y`.
+* `sensor.thermal_camera_frame_rate` moved to the **diagnostic** category
+  (診斷資料).
+* `number.thermal_camera_x1/y1/x2/y2` are plain **input boxes**
+  (`NumberMode.BOX`) instead of sliders.
+* The integration now ships the SenXorEvkViewer application icon as its brand
+  image (`custom_components/senxor_thermal/brand/icon.png`, extracted from the
+  executable, white background made transparent).
+
 ## 2.3.1
 
 * **中斷連線** now really disconnects: it closes the socket, clears the last

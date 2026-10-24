@@ -54,12 +54,6 @@
       "probe_2_temperature": {
         "name": "溫度2"
       },
-      "hotspot_x": {
-        "name": "熱點 X"
-      },
-      "hotspot_y": {
-        "name": "熱點 Y"
-      },
       "die_temperature": {
         "name": "晶片溫度"
       },

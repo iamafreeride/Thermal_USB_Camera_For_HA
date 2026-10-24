@@ -108,24 +108,6 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
         value_fn=lambda data: None if data.probe_2 is None else round(data.probe_2, 2),
     ),
     SenXorSensorDescription(
-        key="hotspot_x",
-        translation_key="hotspot_x",
-        name="熱點 X",
-        state_class=SensorStateClass.MEASUREMENT,
-        icon="mdi:axis-x-arrow",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_stats_value(lambda stats: float(stats.max_position[0])),
-    ),
-    SenXorSensorDescription(
-        key="hotspot_y",
-        translation_key="hotspot_y",
-        name="熱點 Y",
-        state_class=SensorStateClass.MEASUREMENT,
-        icon="mdi:axis-y-arrow",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_stats_value(lambda stats: float(stats.max_position[1])),
-    ),
-    SenXorSensorDescription(
         key="die_temperature",
         translation_key="die_temperature",
         name="晶片溫度",
@@ -157,6 +139,7 @@ SENSORS: tuple[SenXorSensorDescription, ...] = (
         native_unit_of_measurement="fps",
         icon="mdi:speedometer",
         suggested_display_precision=1,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.frame_rate,
     ),
 )

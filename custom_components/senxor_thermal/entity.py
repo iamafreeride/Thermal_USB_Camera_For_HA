@@ -20,8 +20,6 @@ ENTITY_IDS: dict[str, dict[str, str]] = {
         "center_temperature": "thermal_camera_centre_temperature",
         "probe_1_temperature": "thermal_camera_temperature_1",
         "probe_2_temperature": "thermal_camera_temperature_2",
-        "hotspot_x": "thermal_camera_hotspot_x",
-        "hotspot_y": "thermal_camera_hotspot_y",
         "die_temperature": "thermal_camera_die_temperature",
         "vdd": "thermal_camera_vdd",
         "frame_rate": "thermal_camera_frame_rate",

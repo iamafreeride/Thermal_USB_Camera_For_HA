@@ -150,6 +150,7 @@ NUMBERS: tuple[SenXorNumberDescription, ...] = (
         native_max_value=79,
         native_step=1,
         icon="mdi:axis-x-arrow",
+        mode=NumberMode.BOX,
         entity_category=None,
     ),
     SenXorNumberDescription(
@@ -162,6 +163,7 @@ NUMBERS: tuple[SenXorNumberDescription, ...] = (
         native_max_value=61,
         native_step=1,
         icon="mdi:axis-y-arrow",
+        mode=NumberMode.BOX,
         entity_category=None,
     ),
     SenXorNumberDescription(
@@ -174,6 +176,7 @@ NUMBERS: tuple[SenXorNumberDescription, ...] = (
         native_max_value=79,
         native_step=1,
         icon="mdi:axis-x-arrow",
+        mode=NumberMode.BOX,
         entity_category=None,
     ),
     SenXorNumberDescription(
@@ -186,6 +189,7 @@ NUMBERS: tuple[SenXorNumberDescription, ...] = (
         native_max_value=61,
         native_step=1,
         icon="mdi:axis-y-arrow",
+        mode=NumberMode.BOX,
         entity_category=None,
     ),
 )
