@@ -32,6 +32,7 @@ def draw_overlay(
     scale_min: float,
     scale_max: float,
     format_temperature,
+    probes: list | None = None,
 ) -> None:
     """Draw the colour bar, the min/max markers and the centre crosshair."""
     width, height = canvas.size
@@ -99,6 +100,18 @@ def draw_overlay(
             ty = min(height - inset - text_h, max(inset, ty))
             draw.rectangle([tx - 2, ty - 1, tx + text_w + 2, ty + text_h + 1], fill=(0, 0, 0))
             draw.text((tx, ty), label, fill=colour, font=font)
+
+    # --- user probes ------------------------------------------------------
+    for px, py, label in probes or []:
+        cx = min(plot_width - inset, max(inset, (px + 0.5) * plot_width / FRAME_WIDTH))
+        cy = min(height - inset, max(inset, (py + 0.5) * height / FRAME_HEIGHT))
+        size = max(4, int(min(plot_width / FRAME_WIDTH, height / FRAME_HEIGHT) * 0.55))
+        draw.rectangle([cx - size, cy - size, cx + size, cy + size], outline=(120, 255, 160), width=2)
+        text_w, text_h = _text_size(draw, label, font)
+        tx = min(plot_width - inset - text_w, max(inset, cx + size + 4))
+        ty = min(height - inset - text_h, max(inset, cy - size - text_h - 2))
+        draw.rectangle([tx - 2, ty - 1, tx + text_w + 2, ty + text_h + 1], fill=(0, 0, 0))
+        draw.text((tx, ty), label, fill=(120, 255, 160), font=font)
 
     # --- centre crosshair -------------------------------------------------
     if options.show_crosshair:

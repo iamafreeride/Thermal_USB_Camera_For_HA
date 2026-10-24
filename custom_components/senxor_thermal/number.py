@@ -12,6 +12,7 @@ from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import DEFAULT_PROBE_1, DEFAULT_PROBE_2
 from .coordinator import SenXorCoordinator
 from .entity import SenXorEntity
 
@@ -58,6 +59,46 @@ NUMBERS: tuple[SenXorNumberDescription, ...] = (
         unit=UnitOfTemperature.CELSIUS,
         device_class=NumberDeviceClass.TEMPERATURE,
         icon="mdi:thermometer-plus",
+    ),
+    SenXorNumberDescription(
+        key="probe_1_x",
+        name="Probe 1 X",
+        getter=lambda coord: coord.settings.probe_1_x,
+        setter=lambda coord, value: {"probe_1_x": int(value)},
+        minimum=0,
+        maximum=79,
+        step=1,
+        icon="mdi:axis-x-arrow",
+    ),
+    SenXorNumberDescription(
+        key="probe_1_y",
+        name="Probe 1 Y",
+        getter=lambda coord: coord.settings.probe_1_y,
+        setter=lambda coord, value: {"probe_1_y": int(value)},
+        minimum=0,
+        maximum=61,
+        step=1,
+        icon="mdi:axis-y-arrow",
+    ),
+    SenXorNumberDescription(
+        key="probe_2_x",
+        name="Probe 2 X",
+        getter=lambda coord: coord.settings.probe_2_x,
+        setter=lambda coord, value: {"probe_2_x": int(value)},
+        minimum=0,
+        maximum=79,
+        step=1,
+        icon="mdi:axis-x-arrow",
+    ),
+    SenXorNumberDescription(
+        key="probe_2_y",
+        name="Probe 2 Y",
+        getter=lambda coord: coord.settings.probe_2_y,
+        setter=lambda coord, value: {"probe_2_y": int(value)},
+        minimum=0,
+        maximum=61,
+        step=1,
+        icon="mdi:axis-y-arrow",
     ),
     SenXorNumberDescription(
         key="scale_minimum",

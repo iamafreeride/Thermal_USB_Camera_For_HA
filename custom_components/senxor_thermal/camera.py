@@ -18,6 +18,8 @@ from .const import (
     ATTR_MAX_TEMPERATURE,
     ATTR_MEAN_TEMPERATURE,
     ATTR_MIN_TEMPERATURE,
+    ATTR_PROBE_1_TEMPERATURE,
+    ATTR_PROBE_2_TEMPERATURE,
     ATTR_RAW_MAX,
     ATTR_RAW_MIN,
     DOMAIN,
@@ -102,4 +104,10 @@ class SenXorThermalCamera(CoordinatorEntity[SenXorCoordinator], Camera):
         attributes["palette"] = self.coordinator.settings.palette
         attributes["streaming"] = self.coordinator.streaming
         attributes["frame_rate_level"] = self.coordinator.settings.fps_level
+        probe_1 = self.coordinator.probe_temperature(1)
+        probe_2 = self.coordinator.probe_temperature(2)
+        if probe_1 is not None:
+            attributes[ATTR_PROBE_1_TEMPERATURE] = round(celsius_to_unit(probe_1, unit), 2)
+        if probe_2 is not None:
+            attributes[ATTR_PROBE_2_TEMPERATURE] = round(celsius_to_unit(probe_2, unit), 2)
         return attributes

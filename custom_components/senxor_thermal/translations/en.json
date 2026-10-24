@@ -46,14 +46,17 @@
       "frame_rate": {
         "name": "Frame rate"
       },
-      "frames_received": {
-        "name": "Frames received"
-      },
       "hotspot_x": {
         "name": "Hotspot X"
       },
       "hotspot_y": {
         "name": "Hotspot Y"
+      },
+      "probe_1_temperature": {
+        "name": "Probe 1 temperature"
+      },
+      "probe_2_temperature": {
+        "name": "Probe 2 temperature"
       }
     },
     "number": {
@@ -68,6 +71,18 @@
       },
       "scale_maximum": {
         "name": "Scale maximum"
+      },
+      "probe_1_x": {
+        "name": "Probe 1 X"
+      },
+      "probe_1_y": {
+        "name": "Probe 1 Y"
+      },
+      "probe_2_x": {
+        "name": "Probe 2 X"
+      },
+      "probe_2_y": {
+        "name": "Probe 2 Y"
       }
     },
     "select": {

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Awaitable, Callable
 
 from homeassistant.components.button import ButtonEntity
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -81,6 +82,17 @@ class SenXorButton(SenXorEntity, ButtonEntity):
         self._attr_translation_key = description.key
         self._attr_icon = description.icon
 
+    @property
+    def available(self) -> bool:
+        """Buttons stay usable while the stream is down so they can recover it."""
+        return True
+
     async def async_press(self) -> None:
-        """Run the configured action."""
-        await self.entity_description.action(self.coordinator)
+        """Run the configured action, reconnecting first when necessary."""
+        coordinator = self.coordinator
+        if not coordinator.connected:
+            try:
+                await coordinator.async_connect()
+            except Exception as err:  # noqa: BLE001 - surfaced to the user
+                raise HomeAssistantError(f"Camera is not reachable: {err}") from err
+        await self.entity_description.action(coordinator)

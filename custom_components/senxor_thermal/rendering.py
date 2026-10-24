@@ -203,6 +203,7 @@ class RenderOptions:
     show_markers: bool = True
     show_colorbar: bool = True
     show_crosshair: bool = True
+    probes: tuple[tuple[int, int], ...] = ()
     width: int = 640
     height: int = 496
     jpeg_quality: int = 85
@@ -256,7 +257,12 @@ def render_values(values: list[float], options: RenderOptions) -> RenderedFrame:
 
     image = _colorize(values, low, high, options.palette)
     image = image.resize((options.width, options.height), _RESAMPLE)
-    draw_overlay(image, stats, options, low, high, format_temperature)
+    probe_labels = []
+    for index, (x, y) in enumerate(options.probes, start=1):
+        px = max(0, min(FRAME_WIDTH - 1, x))
+        py = max(0, min(FRAME_HEIGHT - 1, y))
+        probe_labels.append((px, py, f"P{index} {format_temperature(values[py * FRAME_WIDTH + px], options.unit)}"))
+    draw_overlay(image, stats, options, low, high, format_temperature, probe_labels)
 
     buffer = io.BytesIO()
     image.save(buffer, format="JPEG", quality=options.jpeg_quality)

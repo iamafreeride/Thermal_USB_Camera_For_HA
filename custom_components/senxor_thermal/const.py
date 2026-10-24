@@ -31,6 +31,10 @@ CONF_SHOW_MARKERS: Final = "show_markers"
 CONF_SHOW_COLORBAR: Final = "show_colorbar"
 CONF_JPEG_QUALITY: Final = "jpeg_quality"
 CONF_FPS_LEVEL: Final = "fps_level"
+CONF_PROBE_1_X: Final = "probe_1_x"
+CONF_PROBE_1_Y: Final = "probe_1_y"
+CONF_PROBE_2_X: Final = "probe_2_x"
+CONF_PROBE_2_Y: Final = "probe_2_y"
 
 DEFAULT_EMISSIVITY: Final = 0.97
 DEFAULT_OFFSET: Final = 1.5
@@ -41,6 +45,8 @@ DEFAULT_SCALE_MIN: Final = 20.0
 DEFAULT_SCALE_MAX: Final = 40.0
 DEFAULT_JPEG_QUALITY: Final = 85
 DEFAULT_FPS_LEVEL: Final = 1
+DEFAULT_PROBE_1: Final = (20, 31)
+DEFAULT_PROBE_2: Final = (60, 31)
 
 TEMPERATURE_UNITS: Final = ["°C", "°F", "K", "dK"]
 FILTER_MODES: Final = ["None", "Low", "High"]
@@ -55,5 +61,7 @@ ATTR_CENTER_TEMPERATURE: Final = "center_temperature"
 ATTR_FRAME_RATE: Final = "frame_rate"
 ATTR_RAW_MIN: Final = "raw_min_dk"
 ATTR_RAW_MAX: Final = "raw_max_dk"
+ATTR_PROBE_1_TEMPERATURE: Final = "probe_1_temperature"
+ATTR_PROBE_2_TEMPERATURE: Final = "probe_2_temperature"
 
 SERVICE_SNAPSHOT: Final = "snapshot"

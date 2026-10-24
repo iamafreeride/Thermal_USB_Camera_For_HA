@@ -64,11 +64,14 @@ Options (⚙ on the integration card): update interval (seconds) and JPEG qualit
 | `sensor.thermal_camera_average_temperature` | °C | Mean of all 4960 pixels |
 | `sensor.thermal_camera_centre_temperature` | °C | Pixel under the crosshair |
 | `sensor.thermal_camera_frame_rate` | fps | Measured frame rate |
-| `sensor.thermal_camera_frames_received` | – | Frame counter |
 | `sensor.thermal_camera_hotspot_x` / `_y` | px | Coordinates of the hottest pixel |
+| `sensor.thermal_camera_probe_1_temperature` | °C | Temperature at probe 1 |
+| `sensor.thermal_camera_probe_2_temperature` | °C | Temperature at probe 2 |
 | `number.thermal_camera_emissivity` | 0.10–1.00 | Grey body emissivity used for the radiance correction |
 | `number.thermal_camera_temperature_offset` | °C | Added to every pixel (viewer's "Temp Offset") |
 | `number.thermal_camera_scale_minimum` / `_maximum` | °C | Manual colour scale limits |
+| `number.thermal_camera_probe_1_x` / `_1_y` | 0–79 / 0–61 | Probe 1 pixel coordinates |
+| `number.thermal_camera_probe_2_x` / `_2_y` | 0–79 / 0–61 | Probe 2 pixel coordinates |
 | `select.thermal_camera_palette` | 12 options | `INFERNO`, `HEATED_IRON`, `BLACK_BODY`, `PLASMA`, `COOLWARM`, `IRON_GLOW`, `GRAYSCALE`, `BONE`, `BEZIER`, `OCEAN`, `RAINBOW`, `SUMMER` |
 | `select.thermal_camera_image_temperature_unit` | `°C` `°F` `K` `dK` | Unit used for the values drawn on the image |
 | `select.thermal_camera_filtering` | `None` `Low` `High` | 3×3 / 5×5 spatial smoothing |
@@ -81,6 +84,25 @@ Options (⚙ on the integration card): update interval (seconds) and JPEG qualit
 | `button.thermal_camera_restart_stream` | – | Reconnect and restart streaming (`WREG 0xB103`) |
 | `button.thermal_camera_increase_frame_rate` | – | One level faster (`0xB400 + level`) |
 | `button.thermal_camera_decrease_frame_rate` | – | One level slower (`0xB400 + level`) |
+
+### Probe coordinates
+
+Two free probes address single pixels: set `number.thermal_camera_probe_1_x` /
+`_1_y` (and the same for probe 2) to a coordinate between `0..79` and `0..61`
+(origin is the top-left corner of the image). The matching
+`sensor.thermal_camera_probe_1_temperature` / `_2_temperature` report the
+calibrated temperature of exactly that pixel, and both probes are drawn onto the
+thermogram as green markers with their live reading:
+
+![Probes](docs/images/thermogram_probes.jpg)
+
+The coordinates are stored in the config entry and survive restarts; values are
+clamped to the sensor area, so an out-of-range coordinate simply pins to the
+border.
+
+All buttons stay pressable even while the stream is down: pressing one first
+tries to re-establish the connection, and reports a clear error if the camera is
+unreachable (for example because the Windows viewer holds the stream).
 
 ### Frame rate levels
 

@@ -1,5 +1,16 @@
 ﻿# Changelog
 
+## 1.2.0
+
+* Two free probes: `number.probe_1_x/_1_y` and `number.probe_2_x/_2_y` select a
+  pixel, `sensor.probe_1_temperature` / `_2_temperature` report its temperature,
+  and both probes are drawn on the thermogram.
+* Every button entity is now always pressable: a press reconnects first when the
+  stream is down and raises a readable error instead of being greyed out.
+* Removed the `frames_received` sensor (its counter only grew, the frame rate
+  sensor covers the same need).
+* Camera attributes now include `probe_1_temperature` / `probe_2_temperature`.
+
 ## 1.1.0
 
 * Frame rate control corrected: the firmware uses an absolute level register

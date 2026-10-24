@@ -23,6 +23,10 @@ from .const import (
     CONF_JPEG_QUALITY,
     CONF_OFFSET,
     CONF_PALETTE,
+    CONF_PROBE_1_X,
+    CONF_PROBE_1_Y,
+    CONF_PROBE_2_X,
+    CONF_PROBE_2_Y,
     CONF_REMOVE_EXTREME,
     CONF_SCALE_MAX,
     CONF_SCALE_MIN,
@@ -35,6 +39,8 @@ from .const import (
     DEFAULT_GAIN,
     DEFAULT_JPEG_QUALITY,
     DEFAULT_OFFSET,
+    DEFAULT_PROBE_1,
+    DEFAULT_PROBE_2,
     DEFAULT_SCALE_MAX,
     DEFAULT_SCALE_MIN,
     DEFAULT_UNIT,
@@ -87,6 +93,10 @@ class SenXorSettings:
     show_colorbar: bool = True
     jpeg_quality: int = DEFAULT_JPEG_QUALITY
     fps_level: int = DEFAULT_FPS_LEVEL
+    probe_1_x: int = DEFAULT_PROBE_1[0]
+    probe_1_y: int = DEFAULT_PROBE_1[1]
+    probe_2_x: int = DEFAULT_PROBE_2[0]
+    probe_2_y: int = DEFAULT_PROBE_2[1]
 
     @classmethod
     def from_options(cls, options: dict[str, Any]) -> "SenXorSettings":
@@ -105,6 +115,10 @@ class SenXorSettings:
             show_colorbar=bool(options.get(CONF_SHOW_COLORBAR, True)),
             jpeg_quality=int(options.get(CONF_JPEG_QUALITY, DEFAULT_JPEG_QUALITY)),
             fps_level=int(options.get(CONF_FPS_LEVEL, DEFAULT_FPS_LEVEL)),
+            probe_1_x=int(options.get(CONF_PROBE_1_X, DEFAULT_PROBE_1[0])),
+            probe_1_y=int(options.get(CONF_PROBE_1_Y, DEFAULT_PROBE_1[1])),
+            probe_2_x=int(options.get(CONF_PROBE_2_X, DEFAULT_PROBE_2[0])),
+            probe_2_y=int(options.get(CONF_PROBE_2_Y, DEFAULT_PROBE_2[1])),
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -123,7 +137,19 @@ class SenXorSettings:
             CONF_SHOW_COLORBAR: self.show_colorbar,
             CONF_JPEG_QUALITY: self.jpeg_quality,
             CONF_FPS_LEVEL: self.fps_level,
+            CONF_PROBE_1_X: self.probe_1_x,
+            CONF_PROBE_1_Y: self.probe_1_y,
+            CONF_PROBE_2_X: self.probe_2_x,
+            CONF_PROBE_2_Y: self.probe_2_y,
         }
+
+    @property
+    def probes(self) -> tuple[tuple[int, int], tuple[int, int]]:
+        """The two user positioned probe coordinates (clamped to the frame)."""
+        return (
+            (max(0, min(FRAME_WIDTH - 1, self.probe_1_x)), max(0, min(FRAME_HEIGHT - 1, self.probe_1_y))),
+            (max(0, min(FRAME_WIDTH - 1, self.probe_2_x)), max(0, min(FRAME_HEIGHT - 1, self.probe_2_y))),
+        )
 
     def render_options(self) -> RenderOptions:
         return RenderOptions(
@@ -138,6 +164,10 @@ class SenXorSettings:
             offset=self.offset,
             show_markers=self.show_markers,
             show_colorbar=self.show_colorbar,
+            probes=(
+                (self.probe_1_x, self.probe_1_y),
+                (self.probe_2_x, self.probe_2_y),
+            ),
             width=RENDER_WIDTH,
             height=RENDER_HEIGHT,
             jpeg_quality=self.jpeg_quality,
@@ -154,6 +184,8 @@ class SenXorData:
     frame_rate: float = 0.0
     connected: bool = False
     last_error: str | None = None
+    probe_1: float | None = None
+    probe_2: float | None = None
 
     @property
     def available(self) -> bool:
@@ -349,6 +381,18 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
 
         return self._build_data()
 
+    @property
+    def connected(self) -> bool:
+        """True while the TCP connection to the camera is open."""
+        return self._connection.connected
+
+    def probe_temperature(self, which: int) -> float | None:
+        """Calibrated temperature (Celsius) at probe 1 or probe 2."""
+        data = self.data
+        if data is None:
+            return None
+        return data.probe_1 if which == 1 else data.probe_2
+
     def _build_data(self) -> SenXorData:
         frame = self._frame
         data = SenXorData(
@@ -365,6 +409,9 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         )
         data.values = values
         data.stats = compute_stats(values)
+        (x1, y1), (x2, y2) = self.settings.probes
+        data.probe_1 = values[y1 * FRAME_WIDTH + x1]
+        data.probe_2 = values[y2 * FRAME_WIDTH + x2]
         return data
 
     def _compute_frame_rate(self) -> float:
