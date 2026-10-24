@@ -132,9 +132,6 @@
       }
     },
     "button": {
-      "single_frame": {
-        "name": "Single frame"
-      },
       "reconnect": {
         "name": "Reconnect"
       },

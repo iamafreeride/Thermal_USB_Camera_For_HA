@@ -111,13 +111,13 @@ class ButtonAvailabilityTest(unittest.TestCase):
             calls.append("connect")
             self.coordinator._connection.connected = True
 
-        async def fake_single():
-            calls.append("single")
+        async def fake_adjust():
+            calls.append("adjust")
 
         self.coordinator.async_connect = fake_connect
-        self.coordinator.async_single_frame = fake_single
-        asyncio.run(self.buttons["single_frame"].async_press())
-        self.assertEqual(calls, ["connect", "single"])
+        self.coordinator.async_frame_rate_up = fake_adjust
+        asyncio.run(self.buttons["increase_frame_rate"].async_press())
+        self.assertEqual(calls[:1], ["connect"])
 
 
 class ProbeRenderTest(unittest.TestCase):

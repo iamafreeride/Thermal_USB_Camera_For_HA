@@ -31,12 +31,6 @@ class SenXorButtonDescription:
 
 BUTTONS: tuple[SenXorButtonDescription, ...] = (
     SenXorButtonDescription(
-        key="single_frame",
-        name="單張擷取",
-        action=lambda coord: coord.async_single_frame(),
-        icon="mdi:camera-iris",
-    ),
-    SenXorButtonDescription(
         key="reconnect",
         name="重新連線",
         action=lambda coord: coord.async_connect(),

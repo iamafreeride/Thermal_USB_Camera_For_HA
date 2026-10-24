@@ -18,6 +18,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 
 from .const import (
     CONF_PORT,
@@ -60,6 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.runtime_data = coordinator
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    _async_remove_legacy_entities(hass, entry)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_register_services(hass)
@@ -74,6 +76,24 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_shutdown()
         hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
     return unloaded
+
+
+#: Entities that existed in older versions and must disappear on update.
+_LEGACY_ENTITIES: tuple[tuple[str, str], ...] = (
+    ("sensor", "frames_received"),
+    ("button", "single_frame"),
+    ("select", "frame_rate_level"),
+)
+
+
+def _async_remove_legacy_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Drop registry entries left behind by earlier versions of the integration."""
+    registry = er.async_get(hass)
+    for platform, key in _LEGACY_ENTITIES:
+        entity_id = registry.async_get_entity_id(platform, DOMAIN, f"{entry.entry_id}_{key}")
+        if entity_id is not None:
+            _LOGGER.info("Removing legacy entity %s", entity_id)
+            registry.async_remove(entity_id)
 
 
 def _async_register_services(hass: HomeAssistant) -> None:

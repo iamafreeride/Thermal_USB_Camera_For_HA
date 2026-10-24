@@ -1,5 +1,16 @@
 ﻿# Changelog
 
+## 2.2.0
+
+* Exactly the four requested buttons: 中斷連線 / 重新連線 / FPS 增加 / FPS 減少
+  (`single_frame` removed).
+* Every number, select and switch is now a **visible control** instead of a
+  `config` entity, so they appear directly on the device page rather than inside
+  the collapsed *Configuration* section.
+* Entities removed in earlier versions (`frames_received`,
+  `frame_rate_level`, `single_frame`) are deleted from the entity registry
+  automatically on setup.
+
 ## 2.1.0
 
 * Every entity now carries a **Chinese display name**, independent of the Home

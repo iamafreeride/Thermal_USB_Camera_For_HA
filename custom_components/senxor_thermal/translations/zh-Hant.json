@@ -137,9 +137,6 @@
       }
     },
     "button": {
-      "single_frame": {
-        "name": "單張擷取"
-      },
       "reconnect": {
         "name": "重新連線"
       },

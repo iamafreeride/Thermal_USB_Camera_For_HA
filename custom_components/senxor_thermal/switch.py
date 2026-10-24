@@ -32,7 +32,7 @@ class SenXorSwitchDescription:
     on: Callable[[SenXorCoordinator], Awaitable[None]]
     off: Callable[[SenXorCoordinator], Awaitable[None]]
     icon: str
-    entity_category: EntityCategory | None = EntityCategory.CONFIG
+    entity_category: EntityCategory | None = None
 
 
 SWITCHES: tuple[SenXorSwitchDescription, ...] = (

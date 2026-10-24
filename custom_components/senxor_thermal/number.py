@@ -49,7 +49,7 @@ class SenXorNumberDescription:
     device_class: NumberDeviceClass | None = None
     mode: NumberMode = NumberMode.BOX
     icon: str | None = None
-    entity_category: EntityCategory | None = EntityCategory.CONFIG
+    entity_category: EntityCategory | None = None
 
 
 NUMBERS: tuple[SenXorNumberDescription, ...] = (

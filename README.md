@@ -95,7 +95,16 @@ Home Assistant's slugify() drops CJK characters.
 | `button.thermal_camera_fps_decrease` | FPS 減少 | Divider + 1 (slower) |
 | `button.thermal_camera_disconnect` | 中斷連線 | Close the TCP connection |
 | `button.thermal_camera_reconnect` | 重新連線 | Reconnect and restart streaming |
-| `button.thermal_camera_single_frame` | 單張擷取 | Trigger one frame (`0xB1` = 1) |
+
+### Where to look
+
+Everything is visible on the device page (**設定 → 裝置與服務 → SenXor → 實體**);
+no entity is hidden in a collapsed category.  If an entity is still missing after
+an update, reload the integration once (⚙ → 重新載入) so the new platforms are
+registered, then hard-refresh the browser.
+
+The four buttons are 中斷連線 / 重新連線 / FPS 增加 / FPS 減少; the four number
+boxes are X1 / Y1 / X2 / Y2; the two probe temperatures are 溫度1 / 溫度2.
 
 > Entity ids changed in 2.1.0 (`probe_1_x` → `x1`, `probe_1_temperature` →
 > `temperature_1`, `scale_minimum` → `scale_min`, `increase_frame_rate` →

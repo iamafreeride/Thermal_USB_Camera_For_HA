@@ -258,17 +258,17 @@ class ButtonEntityTest(unittest.TestCase):
     def test_buttons_delegate_to_coordinator(self) -> None:
         calls: list[str] = []
 
-        async def fake_single():
-            calls.append("single")
+        async def fake_disconnect():
+            calls.append("disconnect")
 
         async def fake_connect():
             calls.append("connect")
 
-        self.coordinator.async_single_frame = fake_single
+        self.coordinator.async_shutdown = fake_disconnect
         self.coordinator.async_connect = fake_connect
-        asyncio.run(self.entities["single_frame"].async_press())
+        asyncio.run(self.entities["disconnect"].async_press())
         asyncio.run(self.entities["reconnect"].async_press())
-        self.assertEqual(calls, ["single", "connect"])
+        self.assertEqual(calls, ["disconnect", "connect"])
 
 
 if __name__ == "__main__":

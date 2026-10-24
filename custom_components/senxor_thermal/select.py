@@ -34,7 +34,7 @@ class SenXorSelectDescription:
     getter: Callable[[SenXorCoordinator], str]
     setter: Callable[[SenXorCoordinator, str], Awaitable[None]]
     icon: str
-    entity_category: EntityCategory | None = EntityCategory.CONFIG
+    entity_category: EntityCategory | None = None
 
 
 SELECTS: tuple[SenXorSelectDescription, ...] = (

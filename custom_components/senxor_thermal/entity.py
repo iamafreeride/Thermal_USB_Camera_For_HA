@@ -53,7 +53,6 @@ ENTITY_IDS: dict[str, dict[str, str]] = {
         "show_colorbar": "thermal_camera_show_colorbar",
     },
     "button": {
-        "single_frame": "thermal_camera_single_frame",
         "reconnect": "thermal_camera_reconnect",
         "disconnect": "thermal_camera_disconnect",
         "increase_frame_rate": "thermal_camera_fps_increase",

@@ -211,6 +211,20 @@ def install() -> None:  # noqa: PLR0915 - one flat block of stubs is clearer
     device_registry = _module("homeassistant.helpers.device_registry")
     device_registry.DeviceInfo = dict
 
+    entity_registry = _module("homeassistant.helpers.entity_registry")
+
+    class _Registry:
+        def __init__(self) -> None:
+            self.removed: list[str] = []
+
+        def async_get_entity_id(self, domain: str, integration: str, unique_id: str):
+            return None
+
+        def async_remove(self, entity_id: str) -> None:
+            self.removed.append(entity_id)
+
+    entity_registry.async_get = lambda hass: _Registry()
+
     entity_platform = _module("homeassistant.helpers.entity_platform")
     entity_platform.AddEntitiesCallback = Any
 
