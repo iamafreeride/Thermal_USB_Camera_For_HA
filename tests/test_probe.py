@@ -72,7 +72,21 @@ class ProbeTest(unittest.TestCase):
 
     def test_probe_times_out_without_frames(self) -> None:
         async def run() -> None:
-            server = await asyncio.start_server(lambda r, w: None, "127.0.0.1", 0)
+            async def hold_open(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+                # Accept the probe but never send a frame.  Keep the connection
+                # open until the client disconnects so Server.wait_closed()
+                # (which waits for active connections on Python 3.12+) returns.
+                try:
+                    while await reader.read(1024):
+                        pass
+                finally:
+                    writer.close()
+                    try:
+                        await writer.wait_closed()
+                    except Exception:  # noqa: BLE001 - client may be gone
+                        pass
+
+            server = await asyncio.start_server(hold_open, "127.0.0.1", 0)
             port = server.sockets[0].getsockname()[1]
             try:
                 with self.assertRaises((protocol.SenXorProtocolError, TimeoutError)):
