@@ -75,7 +75,11 @@ The device acknowledges with a 13 byte message, e.g. `#0008WREG01FD`
 ```
 
 * length `0x2808` = 10248 = 4 (`GFRA`) + 10244
-* total message length 10253 bytes, ~15.5 frames per second
+* total message length 10253 bytes.  The frame rate is set by a divider inside
+  the device: 4.3 - 6.7 fps were observed after using the *FPS up/down*
+  registers, ~14 fps for a fresh session and 15.8 fps on the viewer FPS display
+  right after connecting.  Both the viewer and this integration simply measure
+  the arrival rate.
 
 Payload layout:
 

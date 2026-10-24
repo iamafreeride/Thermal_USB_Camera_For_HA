@@ -12,7 +12,7 @@ readouts) was re-implemented in pure Python inside a HACS-installable
 integration.
 
 ```
-camera.thermal_camera        live thermogram, 80x62 @ ~15 fps
+camera.thermal_camera        live thermogram, 80x62, 4-16 fps (device divider)
 sensor.*                     min / max / average / centre temperature, hot spot, fps
 number.*                     emissivity, temperature offset, manual scale limits
 select.*                     palette, image unit, spatial filtering

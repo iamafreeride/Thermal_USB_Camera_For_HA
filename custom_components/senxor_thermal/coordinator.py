@@ -169,16 +169,22 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
         self._frame_times: deque[float] = deque(maxlen=32)
         self._connect_lock = asyncio.Lock()
         self._render_cache: tuple[int, int, RenderedFrame] | None = None
+        self._first_frame = asyncio.Event()
         self.streaming = True
         self.frames_rendered = 0
 
     # -- connection --------------------------------------------------------
-    async def async_connect(self) -> None:
-        """(Re)connect to the camera and request the continuous stream."""
+    async def async_connect(self, wait_for_frame: float = 8.0) -> None:
+        """(Re)connect to the camera, start streaming and wait for one frame."""
         async with self._connect_lock:
+            self._first_frame.clear()
             await self._connection.connect()
             await self._connection.start_stream()
             self.streaming = True
+            try:
+                await asyncio.wait_for(self._first_frame.wait(), timeout=wait_for_frame)
+            except TimeoutError:
+                _LOGGER.debug("No frame within %.1f s of connecting", wait_for_frame)
 
     async def async_shutdown(self) -> None:
         """Close the connection."""
@@ -187,6 +193,7 @@ class SenXorCoordinator(DataUpdateCoordinator[SenXorData]):
     def _handle_frame(self, frame: ThermalFrame) -> None:
         self._frame = frame
         self._frame_times.append(frame.received)
+        self._first_frame.set()
 
     # -- commands ----------------------------------------------------------
     async def async_start_stream(self) -> None:
