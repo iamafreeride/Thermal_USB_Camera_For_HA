@@ -1,6 +1,6 @@
 # SenXor Thermal Camera for Home Assistant
 
-**English** | [繁體中文](README.zh-TW.md)
+**English** | [繁體中文](README.md)
 
 Home Assistant integration for the **Meridian Innovation SenXor** thermal camera module (80 × 62 IR array) over TCP, e.g. through the EVK network bridge or a serial-to-Ethernet adapter.
 
