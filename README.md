@@ -1,148 +1,85 @@
-# Thermal USB Camera for Home Assistant
+# SenXor 熱影像相機（Home Assistant 整合）
 
-Home Assistant integration for the **Meridian Innovation SenXor** thermal camera
-module (80 × 62 IR array) when it is reachable over TCP — for example through the
-network bridge that ships with the EVK, or a serial-to-Ethernet adapter.
+[English](README.md) | **繁體中文**
 
-This project is a functional port of the vendor's Windows application
-`SenXorEvkViewer_2024.06.06.exe`. The viewer's USB/TCP protocol was
-reverse-engineered from the shipped binary and from live traffic, and the
-viewer's imaging pipeline (palettes, colour scale, filtering, calibration,
-readouts) was re-implemented in pure Python inside a HACS-installable
-integration.
+透過 TCP 連線，將 **Meridian Innovation SenXor** 熱影像模組（80 × 62 紅外線陣列）接入 Home Assistant，可搭配 EVK 網路橋接器或序列埠轉乙太網路轉接器使用。
 
-```
-camera.thermal_camera        live thermogram, 80x62, 4-16 fps (device divider)
-sensor.*                     min / max / average / centre temperature, hot spot, fps
-number.*                     emissivity, temperature offset, manual scale limits
-select.*                     palette, image unit, spatial filtering
-switch.*                     auto range, remove extremes, markers, colour bar
-button.*                     single frame, restart stream, frame rate up/down
-```
+本專案是原廠 Windows 檢視器（`SenXorEvkViewer_2024.06.06.exe`）的功能移植：通訊協定由逆向工程取得，影像處理流程（調色盤、色階、濾波、校正、讀值）以純 Python 重新實作。
 
-![Rendered thermogram](docs/images/thermogram.jpg)
+![熱影像渲染結果](docs/images/thermogram.jpg)
 
-The image above is produced by this integration from a real frame of the
-camera (HEATED_IRON palette, automatic range, colour bar,
-min/max markers and centre readout — the same overlays the Windows viewer draws).
+## 安裝
 
-## Installation
+**HACS（建議）**
 
-### HACS (recommended)
+[![在 Home Assistant 中開啟此 HACS 儲存庫](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=iamafreeride&repository=Thermal_USB_Camera_For_HA&category=integration)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=iamafreeride&repository=Thermal_USB_Camera_For_HA&category=integration)
+1. HACS → **整合** → ⋮ → **自訂儲存庫**
+2. 加入 `https://github.com/iamafreeride/Thermal_USB_Camera_For_HA`，類別選 **Integration**
+3. 安裝 **SenXor Thermal Camera** 並重新啟動 Home Assistant
+4. **設定 → 裝置與服務 → 新增整合 → SenXor Thermal Camera**
+5. 輸入相機位址；設定流程會等待收到一張真實熱影像後才建立項目
 
-1. HACS → **Integrations** → ⋮ → **Custom repositories**
-2. Add `https://github.com/iamafreeride/Thermal_USB_Camera_For_HA` with category **Integration**
-3. Install **SenXor Thermal Camera**, then restart Home Assistant
-4. **Settings → Devices & Services → Add Integration → SenXor Thermal Camera**
-5. Enter the camera address (default port `3333`) and submit — the flow connects
-   to the device and waits for one real thermal frame before creating the entry
+**手動安裝：** 將 `custom_components/senxor_thermal` 複製到 `config` 資料夾並重新啟動。
 
-### Manual
+## 設定
 
-Copy `custom_components/senxor_thermal` into your Home Assistant `config` folder
-and restart.
-
-## Configuration
-
-| Field | Default | Description |
+| 欄位 | 預設值 | 說明 |
 | --- | --- | --- |
-| Host | – | IP address or host name of the camera / TCP bridge |
-| Port | `3333` | Raw TCP port of the SenXor firmware |
-| Name | `Thermal Camera` | Device name |
+| 主機 | – | 相機／TCP 橋接器的 IP 或主機名稱 |
+| 連接埠 | `3333` | SenXor 韌體的原始 TCP 連接埠 |
+| 名稱 | `Thermal Camera` | 裝置名稱 |
 
-Options (⚙ on the integration card): update interval (seconds) and JPEG quality.
+選項（整合卡片上的 ⚙）：更新間隔（秒）與 JPEG 品質。
 
-## Entities
+## 實體
 
-All entities use a Chinese display name; the entity id stays ASCII because
-Home Assistant's slugify() drops CJK characters.
+實體 ID 為 ASCII（`slugify()` 會濾除中文字元），顯示名稱為中文。所有實體都在裝置頁面中；更新後若有實體缺漏，請重新載入整合並強制重新整理瀏覽器。
 
-| Entity id | 名稱 | Description |
+| 實體 ID | 名稱 | 說明 |
 | --- | --- | --- |
-| `camera.thermal_camera` | 熱影像 | False colour thermogram, re-rendered every update |
-| `sensor.thermal_camera_minimum_temperature` | 最低溫 | Coldest pixel of the frame |
-| `sensor.thermal_camera_maximum_temperature` | 最高溫 | Hottest pixel of the frame |
-| `sensor.thermal_camera_average_temperature` | 平均溫 | Mean of all 4960 pixels |
-| `sensor.thermal_camera_centre_temperature` | 中心溫 | Pixel under the crosshair |
-| `sensor.thermal_camera_temperature_1` | 溫度1 | Temperature at (X1, Y1) |
-| `sensor.thermal_camera_temperature_2` | 溫度2 | Temperature at (X2, Y2) |
-| `sensor.thermal_camera_die_temperature` | 晶片溫度 | Sensor die temperature (GFRA header) |
-| `sensor.thermal_camera_vdd` | 供應電壓 | Sensor supply voltage (GFRA header) |
-| `sensor.thermal_camera_frame_rate` | 影格率 | Measured frame rate (diagnostic) |
-| `number.thermal_camera_x1` | X1 | Probe 1 X (0–79) |
-| `number.thermal_camera_y1` | Y1 | Probe 1 Y (0–61) |
-| `number.thermal_camera_x2` | X2 | Probe 2 X (0–79) |
-| `number.thermal_camera_y2` | Y2 | Probe 2 Y (0–61) |
-| `number.thermal_camera_emissivity` | 放射率 | 1–100 %, register `0xCA` |
-| `number.thermal_camera_temperature_offset` | 溫度補償 | −12.8…12.7 °C, register `0xCB` |
-| `number.thermal_camera_sensitivity` | 靈敏度 | 0.01–2.55, register `0xC2` |
-| `number.thermal_camera_frame_rate_divider` | 影格率除數 | 0–127, register `0xB4` (0 = maximum FPS) |
-| `number.thermal_camera_percentile` | 極值裁切 | 0–0.2, used when *移除極值* is on |
-| `number.thermal_camera_scale_min` / `_max` | 色階下限 / 色階上限 | Manual colour scale limits |
-| `select.thermal_camera_palette` | 調色盤 | 12 palettes (`INFERNO`, `HEATED_IRON`, …) |
-| `select.thermal_camera_temperature_unit` | 影像溫度單位 | `°C` `°F` `K` `dK` on the image |
+| `camera.thermal_camera` | 熱影像 | 偽彩色熱影像（80×62），每次更新重新渲染 |
+| `sensor.thermal_camera_minimum_temperature` | 最低溫 | 畫面最冷像素 |
+| `sensor.thermal_camera_maximum_temperature` | 最高溫 | 畫面最熱像素 |
+| `sensor.thermal_camera_average_temperature` | 平均溫 | 全部 4960 像素平均 |
+| `sensor.thermal_camera_centre_temperature` | 中心溫 | 十字準星下的像素 |
+| `sensor.thermal_camera_temperature_1` / `_2` | 溫度1 / 溫度2 | (X1, Y1) / (X2, Y2) 的溫度 |
+| `sensor.thermal_camera_die_temperature` | 晶片溫度 | 感測器晶片溫度（GFRA 標頭） |
+| `sensor.thermal_camera_vdd` | 供應電壓 | 感測器供應電壓（GFRA 標頭） |
+| `sensor.thermal_camera_frame_rate` | 影格率 | 實測影格率（診斷） |
+| `number.thermal_camera_x1` / `_y1` / `_x2` / `_y2` | X1 / Y1 / X2 / Y2 | 探點座標（X 0–79、Y 0–61，原點在左上角） |
+| `number.thermal_camera_emissivity` | 放射率 | 1–100 %，暫存器 `0xCA` |
+| `number.thermal_camera_temperature_offset` | 溫度補償 | −12.8…12.7 °C，暫存器 `0xCB` |
+| `number.thermal_camera_sensitivity` | 靈敏度 | 0.01–2.55，暫存器 `0xC2` |
+| `number.thermal_camera_frame_rate_divider` | 影格率除數 | 0–127，暫存器 `0xB4`（0 = 最大 FPS） |
+| `number.thermal_camera_percentile` | 極值裁切 | 0–0.2，*移除極值* 開啟時使用 |
+| `number.thermal_camera_scale_min` / `_scale_max` | 色階下限 / 上限 | 手動色階範圍 |
+| `select.thermal_camera_palette` | 調色盤 | 12 種（`INFERNO`、`HEATED_IRON`…） |
+| `select.thermal_camera_temperature_unit` | 影像溫度單位 | `°C` `°F` `K` `dK`（僅影響影像上的數字） |
 | `select.thermal_camera_filtering` | 濾波 | `None` / `Low` / `High` |
-| `select.thermal_camera_gain` | 增益 | `Auto` `1` `0.5` `0.25`, register `0xB9` |
-| `switch.thermal_camera_streaming` | 連續擷取 | Start/stop streaming (`0xB1` = 3/0) |
-| `switch.thermal_camera_auto_range` | 自動色階 | Automatic colour scale |
-| `switch.thermal_camera_remove_extreme` | 移除極值 | Trim the configured percentile |
-| `switch.thermal_camera_show_markers` | 顯示極值標記 | Draw hot/cold markers |
-| `switch.thermal_camera_show_colorbar` | 顯示色階條 | Draw the colour bar |
-| `button.thermal_camera_fps_increase` | FPS 增加 | Divider − 1 (faster) |
-| `button.thermal_camera_fps_decrease` | FPS 減少 | Divider + 1 (slower) |
-| `button.thermal_camera_disconnect` | 中斷連線 | Close the TCP connection |
-| `button.thermal_camera_reconnect` | 重新連線 | Reconnect and restart streaming |
+| `select.thermal_camera_gain` | 增益 | `Auto` `1` `0.5` `0.25`，暫存器 `0xB9` |
+| `switch.thermal_camera_streaming` | 連續擷取 | 開始／停止串流（`0xB1` = 3/0） |
+| `switch.thermal_camera_auto_range` | 自動色階 | 自動調整色階 |
+| `switch.thermal_camera_remove_extreme` | 移除極值 | 裁切設定的百分位 |
+| `switch.thermal_camera_show_markers` / `_show_colorbar` | 顯示極值標記 / 色階條 | 繪製冷熱點標記／色階條 |
+| `button.thermal_camera_fps_increase` / `_fps_decrease` | FPS 增加 / 減少 | 除數 −1（更快）／+1（更慢） |
+| `button.thermal_camera_disconnect` / `_reconnect` | 中斷連線 / 重新連線 | 關閉 TCP 連線／重新連線並重啟串流 |
 
-### Where to look
+> 2.1.0 起實體 ID 已變更（`probe_1_x` → `x1`、`probe_1_temperature` → `temperature_1`、`scale_minimum` → `scale_min`、`increase_frame_rate` → `fps_increase` 等）。若儀表板仍依賴舊 ID，請在實體設定中改回。
 
-Everything is visible on the device page (**設定 → 裝置與服務 → SenXor → 實體**);
-no entity is hidden in a collapsed category.  If an entity is still missing after
-an update, reload the integration once (⚙ → 重新載入) so the new platforms are
-registered, then hard-refresh the browser.
+### 補充說明
 
-The four buttons are 中斷連線 / 重新連線 / FPS 增加 / FPS 減少; the four number
-boxes are X1 / Y1 / X2 / Y2; the two probe temperatures are 溫度1 / 溫度2.
+- **探點：** 兩個探點會以綠色標記及即時讀值畫在熱影像上。座標會在重啟後保留，超出範圍的值會被限制在邊界。
 
-> Entity ids changed in 2.1.0 (`probe_1_x` → `x1`, `probe_1_temperature` →
-> `temperature_1`, `scale_minimum` → `scale_min`, `increase_frame_rate` →
-> `fps_increase`, …).  Rename them back in the entity settings if a dashboard
-> depends on the old ids.
+  ![探點](docs/images/thermogram_probes.jpg)
 
-### Probe coordinates
+- **影格率：** `0xB4` 是絕對除數：`0` = 最大 FPS，`1…127` = `FPS_MAX / 除數`。測試相機實測：`0` → 14.8 fps、`2` → 8.3 fps、`4` → 4.7 fps。
+- **單位：** 感測器一律回報 °C（由 Home Assistant 轉換）；影像單位只影響畫在熱影像上的數字。
+- **串流中斷時按下按鈕：** 會先嘗試重新連線，若相機無法連上則回報錯誤。
 
-Two free probes address single pixels: set `number.thermal_camera_probe_1_x` /
-`_1_y` (and the same for probe 2) to a coordinate between `0..79` and `0..61`
-(origin is the top-left corner of the image). The matching
-`sensor.thermal_camera_probe_1_temperature` / `_2_temperature` report the
-calibrated temperature of exactly that pixel, and both probes are drawn onto the
-thermogram as green markers with their live reading:
+## 服務 `senxor_thermal.snapshot`
 
-![Probes](docs/images/thermogram_probes.jpg)
-
-The coordinates are stored in the config entry and survive restarts; values are
-clamped to the sensor area, so an out-of-range coordinate simply pins to the
-border.
-
-All buttons stay pressable even while the stream is down: pressing one first
-tries to re-establish the connection, and reports a clear error if the camera is
-unreachable (for example because the Windows viewer holds the stream).
-
-### Frame rate divider
-
-`0xB4` is an absolute divider, not an up/down command: `0` selects the maximum
-frame rate and `1…127` select `FPS_MAX / divider`. The two buttons step the
-divider by one and the `Frame rate divider` number lets you jump directly.
-Measured on the test camera: divider `0` → 14.8 fps, `2` → 8.3 fps, `4` → 4.7 fps.
-
-Sensors always report **°C**; Home Assistant converts them to your unit system.
-The *image temperature unit* only affects the numbers drawn on the thermogram,
-matching the vendor viewer's "Temperature Unit" radio buttons.
-
-### Service `senxor_thermal.snapshot`
-
-Writes the current thermogram to `config/www/senxor_thermal/`.
+將目前熱影像寫入 `config/www/senxor_thermal/`。
 
 ```yaml
 service: senxor_thermal.snapshot
@@ -151,9 +88,11 @@ data:
   csv: true
 ```
 
-Response: `{"image": ".../kitchen.jpg", "csv": ".../kitchen.csv", "min_dk": 2977, "max_dk": 3034}`
+回傳：`{"image": ".../kitchen.jpg", "csv": ".../kitchen.csv", "min_dk": 2977, "max_dk": 3034}`
 
-## Example dashboard
+## 範例
+
+儀表板：
 
 ```yaml
 type: vertical-stack
@@ -168,10 +107,10 @@ cards:
       - sensor.thermal_camera_minimum_temperature
       - select.thermal_camera_palette
       - number.thermal_camera_emissivity
-      - switch.thermal_camera_automatic_temperature_range
+      - switch.thermal_camera_auto_range
 ```
 
-Automation example – notify on a hot spot:
+高溫通知：
 
 ```yaml
 trigger:
@@ -181,41 +120,34 @@ trigger:
 action:
   - service: notify.persistent_notification
     data:
-      title: Hot spot detected
-      message: >-
-        {{ trigger.to_state.state }} °C at
-        ({{ state_attr('sensor.thermal_camera_hotspot_x','x') }}, ...)
+      title: 偵測到高溫點
+      message: "最高溫：{{ trigger.to_state.state }} °C"
 ```
 
-## Feature parity with the vendor viewer
+## 與原廠檢視器的功能對照
 
-| Viewer feature | Status here |
+| 檢視器功能 | 狀態 |
 | --- | --- |
-| TCP/IP connection (host:port) | ✅ config flow |
-| USB connection | ❌ (same protocol over a serial port; not ported, HA hosts are usually remote) |
-| Connect / Disconnect | ✅ integration setup + *Restart stream* button |
-| Single frame / continuous stream | ✅ buttons + always-on stream |
-| FPS up / down | ✅ buttons + divider number (`0xB4`, 0 = maximum FPS) |
-| 12 colour palettes | ✅ select (tables recreated, not byte-identical) |
-| Auto / manual temperature range, remove extremes | ✅ switches + numbers |
-| Filtering none / low / high | ✅ select |
-| Temperature unit °C/°F/K/dK | ✅ select (image overlay) |
-| Emissivity, temperature offset, sensitivity | ✅ numbers written to registers `0xCA` / `0xCB` / `0xC2` |
-| Sensitivity / gain controls | ✅ `number.sensitivity` (`0xC2`) and `select.gain` (`0xB9`) |
-| Temperature at pixel (X, Y) | ✅ hotspot/centre sensors + camera attributes |
-| Die info (VDD, die temperature) | ✅ decoded from the GFRA header (`sensor.vdd`, `sensor.die_temperature`) |
-| Data recording to text files | ✅ `senxor_thermal.snapshot` (JPEG + CSV) |
-| Life detection (TensorFlow model) | ❌ out of scope (ships `DnIRB_v2_2_thermal_sigma25_depth5.pb`, no portable equivalent) |
-| Product calibration | ❌ factory tool, not ported |
+| TCP/IP 連線 | ✅ 設定流程 |
+| USB 連線 | ❌ 未移植（同協定走序列埠） |
+| 連線／中斷 | ✅ 設定流程 + 按鈕 |
+| 單張／連續擷取 | ✅ 連續擷取開關 |
+| FPS 增減 | ✅ 按鈕 + 除數數值 |
+| 12 種調色盤 | ✅（重新建立，非逐位元組相同） |
+| 自動／手動色階、移除極值 | ✅ 開關 + 數值 |
+| 濾波、溫度單位 | ✅ 選單 |
+| 放射率、補償、靈敏度、增益 | ✅ 暫存器 `0xCA` / `0xCB` / `0xC2` / `0xB9` |
+| 指定像素 (X, Y) 溫度 | ✅ 探點 + 最高溫／中心溫感測器 |
+| 晶片資訊（VDD、晶片溫度） | ✅ 取自 GFRA 標頭 |
+| 資料記錄 | ✅ `snapshot` 服務（JPEG + CSV） |
+| 生命偵測（TensorFlow） | ❌ 不在範圍內 |
+| 產品校正 | ❌ 原廠工具 |
 
-## Troubleshooting
+## 疑難排解
 
-* **Only one TCP client at a time.** The firmware accepts a single connection;
-  quit the Windows viewer before using Home Assistant (the integration logs
-  `connection closed by device` otherwise).
-* **No frames.** Run `python tools/probe.py --host <ip>` on a machine in the same
-  network. It prints the message flow and writes `frame.jpg`.
-* Enable debug logging:
+- **同一時間只能有一個 TCP 連線。** 請先關閉 Windows 檢視器，否則日誌會出現 `connection closed by device`。
+- **收不到影像。** 在同一網路的電腦執行 `python tools/probe.py --host <ip>`，會列出訊息流程並產生 `frame.jpg`。
+- **除錯日誌：**
 
   ```yaml
   logger:
@@ -223,23 +155,10 @@ action:
       custom_components.senxor_thermal: debug
   ```
 
-## How it works
+## 運作原理
 
-The protocol is documented in [docs/protocol.md](docs/protocol.md). In short: a
-plain TCP socket, ASCII framed messages (`#` + 4 hex length + 4 char command),
-one `WREG` register write to start streaming and then 10253 byte `GFRA` frames
-containing 4960 little-endian `uint16` deci-Kelvin samples.
+純 TCP socket，ASCII 訊框（`#` + 4 位十六進位長度 + 4 字元指令）。以一次 `WREG` 寫入啟動串流，之後每個 10253 位元組的 `GFRA` 訊框包含 4960 個小端序 `uint16` 的 deci-Kelvin 取樣。詳見 [docs/protocol.md](docs/protocol.md)。
 
-## 繁體中文快速說明
+## 授權
 
-1. HACS → 整合 → 右上角 ⋮ → 自訂儲存庫，貼上本專案網址，類別選「Integration」。
-2. 安裝 **SenXor Thermal Camera** 後重新啟動 Home Assistant。
-3. 設定 → 裝置與服務 → 新增整合 → 搜尋 `SenXor` → 輸入 `IP`、連接埠 `3333`。
-4. 相機會出現在 `camera.thermal_camera`，並附上最高/最低/平均/中心溫度感測器、色彩盤、
-   濾波、放射率與色階控制。
-5. 注意：原廠 Windows 檢視器同一時間只能有一個連線，使用前請先關閉。
-
-## License
-
-MIT – see [LICENSE](LICENSE). Not affiliated with, endorsed by, or supported by
-Meridian Innovation Limited. "SenXor" is a trademark of its respective owner.
+MIT – 見 [LICENSE](LICENSE)。與 Meridian Innovation Limited 無關聯，亦未獲其背書或支援。「SenXor」為其各自所有者之商標。
