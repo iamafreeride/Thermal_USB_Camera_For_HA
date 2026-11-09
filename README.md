@@ -1,6 +1,6 @@
 # SenXor 熱影像相機（Home Assistant 整合）
 
-[English](README.md) | **繁體中文**
+[English](README_EN.md) | **繁體中文**
 
 透過 TCP 連線，將 **Meridian Innovation SenXor** 熱影像模組（80 × 62 紅外線陣列）接入 Home Assistant，可搭配 EVK 網路橋接器或序列埠轉乙太網路轉接器使用。
 
